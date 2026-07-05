@@ -1,56 +1,215 @@
-import { useEffect, useState } from 'react'
-import { useLoyaltyProgram, useUpdateLoyaltyProgram } from '../../lib/queries'
+import { useState } from 'react'
+import {
+  useLoyaltyPrograms,
+  useCreateLoyaltyProgram,
+  useUpdateLoyaltyProgramCrud,
+  useDeleteLoyaltyProgram,
+  type LoyaltyProgramInput,
+} from '../../lib/queries'
+import type { LoyaltyProgram } from '../../types'
 
-// Admin settings page: edit the loyalty program the kiosk shows on the phone
-// screen. Changes are reflected on the kiosk on its next load.
+type Mode =
+  | { kind: 'list' }
+  | { kind: 'create' }
+  | { kind: 'edit'; program: LoyaltyProgram }
+  | { kind: 'view'; program: LoyaltyProgram }
+
+// Admin: full CRUD over loyalty programs. The kiosk shows the single *active*
+// program (see useLoyaltyProgram); manage all of them here.
 export function LoyaltySettings() {
-  const { data: program, isLoading, error } = useLoyaltyProgram()
-  const update = useUpdateLoyaltyProgram()
-
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [pointsPerReward, setPointsPerReward] = useState('10')
-  const [rewardAmount, setRewardAmount] = useState('10')
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    if (program) {
-      setName(program.name)
-      setDescription(program.description)
-      setPointsPerReward(String(program.pointsPerReward))
-      setRewardAmount(String(program.rewardAmount))
-    }
-  }, [program])
+  const { data: programs, isLoading, error } = useLoyaltyPrograms()
+  const [mode, setMode] = useState<Mode>({ kind: 'list' })
 
   if (isLoading) return <p className="text-slate-500">Loading…</p>
   if (error) return <p className="text-red-600">{error.message}</p>
-  if (!program) {
-    return (
-      <p className="text-slate-500">
-        No active loyalty program found. Seed one in the database first.
-      </p>
-    )
+
+  if (mode.kind === 'create') {
+    return <ProgramForm onDone={() => setMode({ kind: 'list' })} />
+  }
+  if (mode.kind === 'edit') {
+    return <ProgramForm program={mode.program} onDone={() => setMode({ kind: 'list' })} />
+  }
+  if (mode.kind === 'view') {
+    return <ProgramView program={mode.program} onBack={() => setMode({ kind: 'list' })} />
   }
 
-  const onSave = async () => {
-    setSaved(false)
-    await update.mutateAsync({
-      id: program.id,
+  return (
+    <div className="max-w-3xl">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Loyalty programs</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            The kiosk shows the single <span className="font-medium">active</span> program.
+          </p>
+        </div>
+        <button
+          onClick={() => setMode({ kind: 'create' })}
+          className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500"
+        >
+          New program
+        </button>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
+            <tr>
+              <th className="px-4 py-3 font-medium">Name</th>
+              <th className="px-4 py-3 font-medium">Reward</th>
+              <th className="px-4 py-3 font-medium">Active</th>
+              <th className="px-4 py-3 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(programs ?? []).map((p) => (
+              <ProgramRow
+                key={p.id}
+                program={p}
+                onView={() => setMode({ kind: 'view', program: p })}
+                onEdit={() => setMode({ kind: 'edit', program: p })}
+              />
+            ))}
+            {programs?.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                  No programs yet. Create one to show it on the kiosk.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function ProgramRow({
+  program,
+  onView,
+  onEdit,
+}: {
+  program: LoyaltyProgram
+  onView: () => void
+  onEdit: () => void
+}) {
+  const del = useDeleteLoyaltyProgram()
+
+  const onDelete = () => {
+    if (window.confirm(`Delete "${program.name}"? This cannot be undone.`)) {
+      del.mutate(program.id)
+    }
+  }
+
+  return (
+    <tr className="border-b border-slate-100 last:border-0">
+      <td className="px-4 py-3">
+        <button onClick={onView} className="font-medium text-purple-700 hover:underline">
+          {program.name}
+        </button>
+        <div className="text-xs text-slate-400">{program.description}</div>
+      </td>
+      <td className="px-4 py-3 text-slate-600">
+        {program.pointsPerReward} pts → ${program.rewardAmount} off
+      </td>
+      <td className="px-4 py-3">
+        {program.active ? (
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+            active
+          </span>
+        ) : (
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+            inactive
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <button onClick={onView} className="text-sm text-slate-500 hover:text-slate-700">
+          View
+        </button>
+        <button onClick={onEdit} className="ml-3 text-sm text-purple-600 hover:text-purple-800">
+          Edit
+        </button>
+        <button
+          onClick={onDelete}
+          disabled={del.isPending}
+          className="ml-3 text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
+        >
+          Delete
+        </button>
+      </td>
+    </tr>
+  )
+}
+
+function ProgramView({ program, onBack }: { program: LoyaltyProgram; onBack: () => void }) {
+  return (
+    <div className="max-w-xl">
+      <button onClick={onBack} className="text-sm text-slate-500 hover:text-slate-700">
+        ← Back to programs
+      </button>
+      <h1 className="mt-2 text-2xl font-bold">{program.name}</h1>
+      <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-white p-6 text-sm">
+        <Field label="Description" value={program.description} />
+        <Field label="Points per reward" value={String(program.pointsPerReward)} />
+        <Field label="Reward amount" value={`$${program.rewardAmount}`} />
+        <Field label="Status" value={program.active ? 'Active' : 'Inactive'} />
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between border-b border-slate-100 pb-2 last:border-0">
+      <span className="text-slate-500">{label}</span>
+      <span className="font-medium text-slate-800">{value}</span>
+    </div>
+  )
+}
+
+// Create/edit form. Seeded from `program` on edit (via key remount in the list).
+function ProgramForm({
+  program,
+  onDone,
+}: {
+  program?: LoyaltyProgram
+  onDone: () => void
+}) {
+  const create = useCreateLoyaltyProgram()
+  const update = useUpdateLoyaltyProgramCrud()
+  const isEdit = Boolean(program)
+
+  const [name, setName] = useState(program?.name ?? '')
+  const [description, setDescription] = useState(program?.description ?? '')
+  const [pointsPerReward, setPointsPerReward] = useState(String(program?.pointsPerReward ?? 10))
+  const [rewardAmount, setRewardAmount] = useState(String(program?.rewardAmount ?? 10))
+  const [active, setActive] = useState(program?.active ?? true)
+
+  const pending = create.isPending || update.isPending
+  const err = create.error || update.error
+
+  const onSubmit = async () => {
+    const input: LoyaltyProgramInput = {
       name: name.trim(),
       description: description.trim(),
       pointsPerReward: Number(pointsPerReward) || 0,
       rewardAmount: Number(rewardAmount) || 0,
-    })
-    setSaved(true)
+      active,
+    }
+    if (isEdit && program) {
+      await update.mutateAsync({ id: program.id, ...input })
+    } else {
+      await create.mutateAsync(input)
+    }
+    onDone()
   }
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-bold">Loyalty settings</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        This is the program card shown on the kiosk phone-entry screen and the redeem
-        threshold used for the reminder banner.
-      </p>
+      <button onClick={onDone} className="text-sm text-slate-500 hover:text-slate-700">
+        ← Back to programs
+      </button>
+      <h1 className="mt-2 text-2xl font-bold">{isEdit ? 'Edit program' : 'New program'}</h1>
 
       <div className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-white p-6">
         <label className="block">
@@ -91,17 +250,30 @@ export function LoyaltySettings() {
             />
           </label>
         </div>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={(e) => setActive(e.target.checked)}
+            className="h-4 w-4 accent-purple-600"
+          />
+          <span className="text-sm text-slate-600">
+            Active (shown on the kiosk — only one should be active)
+          </span>
+        </label>
 
         <div className="flex items-center gap-3 pt-2">
           <button
-            onClick={onSave}
-            disabled={update.isPending}
+            onClick={onSubmit}
+            disabled={pending || !name.trim()}
             className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
           >
-            {update.isPending ? 'Saving…' : 'Save'}
+            {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Create'}
           </button>
-          {saved && <span className="text-sm text-emerald-600">Saved</span>}
-          {update.error && <span className="text-sm text-red-600">{update.error.message}</span>}
+          <button onClick={onDone} className="text-sm text-slate-500 hover:text-slate-700">
+            Cancel
+          </button>
+          {err && <span className="text-sm text-red-600">{err.message}</span>}
         </div>
       </div>
     </div>

@@ -1,11 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCustomers } from '../../lib/queries'
-import { downloadCsv, toCsv } from '../../lib/csv'
+import { CSV_HEADERS, downloadCsv, toCsv } from '../../lib/csv'
 import { formatPhone } from '../../lib/phone'
-
-// CSV column order shared by export + import.
-export const CSV_HEADERS = ['phone', 'name', 'points_balance', 'visit_count'] as const
 
 export function CustomersList() {
   const { data: customers, isLoading, error } = useCustomers()

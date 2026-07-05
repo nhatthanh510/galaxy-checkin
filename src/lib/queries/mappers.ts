@@ -29,6 +29,7 @@ export function mapService(row: ServiceRow): Service {
     category: row.category,
     price: Number(row.price),
     durationMinutes: row.duration_minutes,
+    active: row.active ?? true,
   }
 }
 

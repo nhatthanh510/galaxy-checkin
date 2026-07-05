@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCreateCheckin } from '../../lib/queries'
-import { useKioskFlow } from './FlowContext'
+import { useKioskFlow } from './useKioskFlow'
 
 const AUTO_RETURN_MS = 6000
 

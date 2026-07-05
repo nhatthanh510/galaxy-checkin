@@ -1,9 +1,8 @@
 import { useMemo, useState, type ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCustomers, useUpsertCustomers, type ImportCustomer } from '../../lib/queries'
-import { parseCsv } from '../../lib/csv'
+import { CSV_HEADERS, parseCsv } from '../../lib/csv'
 import { normalizePhone } from '../../lib/phone'
-import { CSV_HEADERS } from './CustomersList'
 
 interface PreviewRow {
   row: ImportCustomer

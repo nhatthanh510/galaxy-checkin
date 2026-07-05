@@ -14,6 +14,8 @@ import { CustomersList } from './routes/admin/CustomersList'
 import { CustomerDetail } from './routes/admin/CustomerDetail'
 import { CustomerImport } from './routes/admin/CustomerImport'
 import { LoyaltySettings } from './routes/admin/LoyaltySettings'
+import { ServicesManage } from './routes/admin/ServicesManage'
+import { StaffManage } from './routes/admin/StaffManage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
@@ -54,6 +56,8 @@ export default function App() {
               <Route path="customers" element={<CustomersList />} />
               <Route path="customers/import" element={<CustomerImport />} />
               <Route path="customers/:id" element={<CustomerDetail />} />
+              <Route path="services" element={<ServicesManage />} />
+              <Route path="staff" element={<StaffManage />} />
               <Route path="loyalty" element={<LoyaltySettings />} />
             </Route>
 

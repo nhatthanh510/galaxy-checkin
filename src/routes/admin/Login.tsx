@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../lib/auth/AuthProvider'
+import { useAuth } from '../../lib/auth/useAuth'
 
 // Admin login (Supabase email/password). Admin access additionally requires
 // profile.is_admin — enforced by RequireAdmin after sign-in.

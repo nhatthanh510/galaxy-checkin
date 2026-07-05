@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
-import { useKioskFlow } from './FlowContext'
+import { useKioskFlow } from './useKioskFlow'
 
 // Step 2 (new customers only): capture the full name.
 export function NameEntry() {

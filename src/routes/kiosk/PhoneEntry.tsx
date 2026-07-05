@@ -5,11 +5,13 @@ import { LoyaltyCard } from '../../components/LoyaltyCard'
 import { ConsentCheckbox } from '../../components/ConsentCheckbox'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
+import { RedeemModal } from '../../components/RedeemModal'
 import { useCustomerLookup, useLoyaltyProgram } from '../../lib/queries'
+import type { Customer } from '../../types'
 import { formatPhone, isCompletePhone, normalizePhone } from '../../lib/phone'
-import { useKioskFlow } from './FlowContext'
+import { useKioskFlow } from './useKioskFlow'
 
-// Step 1: phone entry. Known number -> greet + (maybe) redeem reminder, skip to
+// Step 1: phone entry. Known number -> greet + (maybe) redeem prompt, skip to
 // services. Unknown -> capture the name next.
 export function PhoneEntry() {
   const navigate = useNavigate()
@@ -17,6 +19,8 @@ export function PhoneEntry() {
   const { data: program } = useLoyaltyProgram()
   const lookup = useCustomerLookup()
   const [consent, setConsent] = useState(false)
+  // A known customer at/over the reward threshold — triggers the redeem modal.
+  const [redeemFor, setRedeemFor] = useState<Customer | null>(null)
 
   const digits = flow.phone
   const complete = isCompletePhone(digits)
@@ -28,12 +32,23 @@ export function PhoneEntry() {
     if (!complete) return
     const customer = await lookup.mutateAsync(digits)
     flow.setCustomer(customer)
-    if (customer) {
-      // Known customer: skip the name step, go straight to services.
-      navigate('/kiosk/services')
-    } else {
+    if (!customer) {
       navigate('/kiosk/name')
+      return
     }
+    // Known customer at/over threshold -> prompt to redeem (with sound) before
+    // continuing. Otherwise skip straight to services.
+    if (program && customer.pointsBalance >= program.pointsPerReward) {
+      setRedeemFor(customer)
+    } else {
+      navigate('/kiosk/services')
+    }
+  }
+
+  // After the redeem modal closes (redeemed or not), continue the flow.
+  const onRedeemClose = () => {
+    setRedeemFor(null)
+    navigate('/kiosk/services')
   }
 
   return (
@@ -71,6 +86,10 @@ export function PhoneEntry() {
       <div className="mx-auto mt-8 w-full max-w-6xl">
         <ConsentCheckbox checked={consent} onChange={setConsent} />
       </div>
+
+      {redeemFor && program && (
+        <RedeemModal customer={redeemFor} program={program} onClose={onRedeemClose} />
+      )}
     </KioskLayout>
   )
 }

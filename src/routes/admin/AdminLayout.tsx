@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../lib/auth/AuthProvider'
+import { useAuth } from '../../lib/auth/useAuth'
 
 // Shared admin shell: light theme, sidebar nav, sign out. Renders child routes
 // via <Outlet />.
@@ -26,6 +26,12 @@ export function AdminLayout() {
         <nav className="space-y-1">
           <NavLink to="/admin/customers" className={linkClass}>
             Customers
+          </NavLink>
+          <NavLink to="/admin/services" className={linkClass}>
+            Services
+          </NavLink>
+          <NavLink to="/admin/staff" className={linkClass}>
+            Preferred staff
           </NavLink>
           <NavLink to="/admin/loyalty" className={linkClass}>
             Loyalty settings

@@ -1,6 +1,9 @@
 // Minimal, dependency-free CSV parse/serialize. Handles quoted fields, escaped
 // quotes ("") and commas/newlines inside quotes — enough for customer import.
 
+// Column order shared by customer export + import.
+export const CSV_HEADERS = ['phone', 'name', 'points_balance', 'visit_count'] as const
+
 // Parse CSV text into rows of cells. Returns [] for empty input.
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = []

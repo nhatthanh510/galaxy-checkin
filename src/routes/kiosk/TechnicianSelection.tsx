@@ -3,7 +3,7 @@ import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
 import { TechAvatar } from '../../components/TechAvatar'
 import { useTechnicians } from '../../lib/queries'
-import { useKioskFlow } from './FlowContext'
+import { useKioskFlow } from './useKioskFlow'
 
 // Step 4: preferred technician (optional — SKIP or NEXT).
 export function TechnicianSelection() {

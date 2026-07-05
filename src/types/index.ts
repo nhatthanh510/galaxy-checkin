@@ -16,6 +16,7 @@ export interface Service {
   category: string
   price: number // in dollars
   durationMinutes: number
+  active: boolean
 }
 
 export interface Technician {

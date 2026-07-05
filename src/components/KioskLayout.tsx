@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useKioskFlow } from '../routes/kiosk/FlowContext'
+import { useKioskFlow } from '../routes/kiosk/useKioskFlow'
 
 interface KioskLayoutProps {
   children: ReactNode

@@ -5,7 +5,7 @@ import { KioskLayout } from '../../components/KioskLayout'
 import { ServiceRow } from '../../components/ServiceRow'
 import { useLoyaltyProgram, useServices } from '../../lib/queries'
 import type { Service } from '../../types'
-import { useKioskFlow } from './FlowContext'
+import { useKioskFlow } from './useKioskFlow'
 
 // Step 3: service selection (optional — SKIP or NEXT). For a known customer this
 // is the first screen after phone entry, so we greet them and remind about
@@ -32,10 +32,15 @@ export function ServiceSelection() {
             <p className="text-2xl font-semibold text-white">
               Welcome back, {customer.name}! 👋
             </p>
+            <p className="mt-1 text-lg text-white/70">
+              You have{' '}
+              <span className="font-bold text-purple-300">{customer.pointsBalance}</span>{' '}
+              {customer.pointsBalance === 1 ? 'point' : 'points'}.
+            </p>
             {canRedeem && program && (
               <div className="mt-3 rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-6 py-4 text-lg text-emerald-200">
-                You have {customer.pointsBalance} points — redeem for $
-                {customer.pointsBalance} off! Ask our staff to apply it.
+                Redeem {program.pointsPerReward} points for ${program.rewardAmount} off! Ask
+                our staff to apply it.
               </div>
             )}
           </div>

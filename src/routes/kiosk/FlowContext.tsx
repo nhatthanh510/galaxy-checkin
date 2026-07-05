@@ -1,23 +1,6 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { Customer } from '../../types'
-
-// Shared state for the multi-step kiosk flow. Held in context so steps compose
-// without prop-drilling. Reset on start-over / when the flow ends so the kiosk
-// is clean for the next person (no leaking of the previous customer's data).
-interface FlowState {
-  phone: string // digits only
-  name: string
-  customer: Customer | null // matched known customer, else null
-  selectedServiceIds: string[]
-  technicianId: string | null
-}
+import { FlowContext, type FlowContextValue, type FlowState } from './kioskFlowContext'
 
 const emptyState: FlowState = {
   phone: '',
@@ -26,17 +9,6 @@ const emptyState: FlowState = {
   selectedServiceIds: [],
   technicianId: null,
 }
-
-interface FlowContextValue extends FlowState {
-  setPhone: (phone: string) => void
-  setName: (name: string) => void
-  setCustomer: (customer: Customer | null) => void
-  toggleService: (serviceId: string) => void
-  setTechnician: (technicianId: string | null) => void
-  reset: () => void
-}
-
-const FlowContext = createContext<FlowContextValue | null>(null)
 
 export function KioskFlowProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<FlowState>(emptyState)
@@ -77,12 +49,4 @@ export function KioskFlowProvider({ children }: { children: ReactNode }) {
   )
 
   return <FlowContext.Provider value={value}>{children}</FlowContext.Provider>
-}
-
-export function useKioskFlow(): FlowContextValue {
-  const ctx = useContext(FlowContext)
-  if (!ctx) {
-    throw new Error('useKioskFlow must be used within a KioskFlowProvider')
-  }
-  return ctx
 }
