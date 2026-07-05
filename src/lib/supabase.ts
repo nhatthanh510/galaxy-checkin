@@ -1,11 +1,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-// Supabase client singleton. Present and ready, but the kiosk currently runs on
-// mock data (see src/lib/mock), so the query hooks in src/lib/queries do not use
-// this yet. When switching a hook from mock to Supabase, import `supabase` here.
+// Supabase client singleton. All data access goes through the query hooks in
+// src/lib/queries (which call getSupabase()) and the AuthProvider.
 //
 // The anon key is safe to ship to the browser — Row Level Security (see
-// supabase/migrations/0001_init.sql) enforces what the anon role can read/write.
+// supabase/migrations/) enforces what the anon role can read/write. See SETUP.md
+// for configuring VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY.
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -20,7 +20,13 @@ export function getSupabase(): SupabaseClient {
           '(see .env.example). The kiosk runs on mock data until the query hooks are switched over.',
       )
     }
-    client = createClient(url, anonKey)
+    client = createClient(url, anonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    })
   }
   return client
 }

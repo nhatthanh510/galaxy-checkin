@@ -1,6 +1,6 @@
-// Shared domain types. These mirror the Supabase schema in
-// supabase/migrations/0001_init.sql and are the contract satisfied by both the
-// mock data layer (src/lib/mock) and the future Supabase-backed hooks.
+// Shared domain (camelCase) types. These mirror the Supabase schema in
+// supabase/migrations/*. The DB uses snake_case; hooks map rows to these shapes
+// via src/lib/queries/mappers.ts. DB row types live at the bottom of this file.
 
 export interface Customer {
   id: string
@@ -67,4 +67,69 @@ export interface CreateCheckinInput {
 export interface CreateCheckinResult {
   checkin: Checkin
   customer: Customer
+}
+
+// ---------------------------------------------------------------------------
+// DB row shapes (snake_case, as returned by Supabase). Mapped to the camelCase
+// domain types above by src/lib/queries/mappers.ts.
+// ---------------------------------------------------------------------------
+
+export interface CustomerRow {
+  id: string
+  phone: string
+  name: string
+  visit_count: number
+  points_balance: number
+  created_at?: string
+}
+
+export interface ServiceRow {
+  id: string
+  name: string
+  category: string
+  price: number
+  duration_minutes: number
+  active?: boolean
+}
+
+export interface TechnicianRow {
+  id: string
+  name: string
+  active: boolean
+  photo_url: string | null
+}
+
+export interface LoyaltyProgramRow {
+  id: string
+  name: string
+  description: string
+  points_per_reward: number
+  reward_amount: number
+  active: boolean
+}
+
+export interface CheckinRow {
+  id: string
+  customer_id: string
+  technician_id: string | null
+  status: CheckinStatus
+  created_at: string
+}
+
+export interface LoyaltyTransactionRow {
+  id: string
+  customer_id: string
+  checkin_id: string | null
+  amount: number
+  reason: string
+  created_at: string
+}
+
+// Result row of the create_checkin RPC.
+export interface CreateCheckinRpcRow {
+  checkin_id: string
+  customer_id: string
+  customer_name: string
+  points_balance: number
+  visit_count: number
 }

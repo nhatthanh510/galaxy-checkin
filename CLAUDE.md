@@ -115,23 +115,40 @@ new), and fire the confirmation SMS.
 
 ## Commands
 
-- `npm run dev` — start the Vite dev server
-- `npm run build` — production build
-- `npm run lint` / `npm run typecheck` — lint and type-check
+This project uses **yarn** (not npm). `.yarnrc` sets `--ignore-engines` because a
+transitive dev dep declares an overly narrow Node range; installs work with plain
+`yarn install`.
+
+- `yarn` / `yarn install` — install dependencies
+- `yarn dev` — start the Vite dev server
+- `yarn build` — production build
+- `yarn lint` / `yarn typecheck` — lint and type-check
 - `supabase start` — run Supabase locally
 - `supabase db reset` — apply migrations to the local DB
 
 ## Notes for Claude
 
-- **Status**: scaffolded. The customer-facing kiosk flow (phone → name → services →
-  tech → success) is built and runs on **in-memory mock data** (`src/lib/mock/data.ts`)
-  behind the query hooks in `src/lib/queries/`. The Supabase schema + RLS is authored in
-  `supabase/migrations/0001_init.sql` (with `seed.sql`) but **not yet connected** — swap a
-  hook from mock to Supabase to wire it up. SMS is deferred: the single integration point
-  is the `TODO(sms)` in `src/lib/queries/useCreateCheckin.ts`. Not yet built: staff
-  dashboard/queue, loyalty-award-on-`completed`, and the `send-sms` Edge Function.
-- The directory layout above matches reality; the produced structure follows it. When
-  scaffolding further, keep it consistent or update this file.
+- **Status**: connected to Supabase. The kiosk flow (phone → name → services → tech →
+  success) and an **admin area** (`/admin`) are built and run against a real Supabase
+  project. See **SETUP.md** for creating the project, applying migrations, and making an
+  admin user. Mock data is gone — all data access is via `src/lib/queries/` hooks.
+  - **DB**: `supabase/migrations/0001_init.sql` (tables + base RLS) and
+    `0002_admin_auth_rpcs.sql` (profiles/`is_admin`, kiosk `SECURITY DEFINER` RPCs
+    `lookup_customer_by_phone`/`create_checkin`, notifications, tightened admin-only
+    policies). Anon has **no blanket customer access** — the kiosk touches `customer`
+    only through those RPCs.
+  - **Auth**: Supabase email/password + a `profile.is_admin` flag. `AuthProvider` +
+    `RequireAdmin` gate the admin routes.
+  - **Admin**: customers list/detail, CSV import (preview + dedupe by phone) / export,
+    and a Loyalty settings page (the kiosk's left-side card is now configurable).
+  - **Notifications (SMS/email)**: PLACEHOLDER. `queueNotification` (`src/lib/notifications.ts`)
+    records intent via the `queue_notification` RPC (status `stubbed`);
+    `supabase/functions/send-notification` is a Supabase **Edge Function** (Deno) that is
+    where real Twilio/email delivery goes (`TODO(twilio/email)`). Deploy with
+    `supabase functions deploy send-notification`. The app does not call it yet.
+  - **Not yet built**: staff live queue / status transitions, awarding points on
+    `completed`, real message delivery.
+- The directory layout above still holds, now with `src/routes/admin/` and `src/lib/auth/`.
 - When adding a feature that touches data, add/adjust the migration AND the RLS policy
   in the same change.
 - Treat the kiosk UI as running unattended on a shared tablet: no dead ends, a clear
