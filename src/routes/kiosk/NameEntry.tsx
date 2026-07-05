@@ -30,7 +30,7 @@ export function NameEntry() {
             if (e.key === 'Enter') onNext()
           }}
           placeholder="Your name"
-          className="mt-10 w-full rounded-2xl bg-black/40 px-8 py-6 text-3xl text-white placeholder:text-white/25 outline-none ring-2 ring-transparent focus:ring-purple-500"
+          className="mt-10 w-full rounded-2xl bg-black/40 px-8 py-6 text-3xl text-white placeholder:text-white/25 outline-none ring-2 ring-transparent focus:ring-brand-500"
         />
 
         <div className="mt-10 flex justify-center">

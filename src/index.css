@@ -1,5 +1,21 @@
 @import 'tailwindcss';
 
+/* Brand palette — a brown ramp derived from the Galaxy Nails logo
+   (dark brown #603010, tan #a07050). Replaces the old purple accent.
+   Tailwind v4 generates bg-brand-*, text-brand-*, ring-brand-*, etc. */
+@theme {
+  --color-brand-50: #faf6f2;
+  --color-brand-100: #f2e8df;
+  --color-brand-200: #e6d0bd;
+  --color-brand-300: #d4b394;
+  --color-brand-400: #bd8f66; /* light tan, near the logo accent */
+  --color-brand-500: #a07050; /* logo tan */
+  --color-brand-600: #855a3c;
+  --color-brand-700: #6b4527; /* between the two logo browns */
+  --color-brand-800: #603010; /* logo dark brown */
+  --color-brand-900: #4a2610;
+}
+
 /* Kiosk base: dark theme, prevent text selection / tap highlight on the shared tablet. */
 html,
 body,

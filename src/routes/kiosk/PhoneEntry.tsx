@@ -8,11 +8,12 @@ import { KioskLayout } from '../../components/KioskLayout'
 import { RedeemModal } from '../../components/RedeemModal'
 import { useCustomerLookup, useLoyaltyProgram } from '../../lib/queries'
 import type { Customer } from '../../types'
-import { formatPhone, isCompletePhone, normalizePhone } from '../../lib/phone'
+import { formatPhone, isComplete, isValidAuMobile, normalizePhone } from '../../lib/phone'
 import { useKioskFlow } from './useKioskFlow'
 
-// Step 1: phone entry. Known number -> greet + (maybe) redeem prompt, skip to
-// services. Unknown -> capture the name next.
+// Step 1: phone entry (Australian mobiles). Known number -> greet + (maybe)
+// redeem, skip to services. Unknown -> capture the name next. An invalid AU
+// number warns but can be force-submitted ("Continue anyway").
 export function PhoneEntry() {
   const navigate = useNavigate()
   const flow = useKioskFlow()
@@ -21,15 +22,24 @@ export function PhoneEntry() {
   const [consent, setConsent] = useState(false)
   // A known customer at/over the reward threshold — triggers the redeem modal.
   const [redeemFor, setRedeemFor] = useState<Customer | null>(null)
+  // Set once the user has tried to submit an invalid number, so the button
+  // switches to "Continue anyway" (force-process).
+  const [forcePrompted, setForcePrompted] = useState(false)
 
   const digits = flow.phone
-  const complete = isCompletePhone(digits)
+  const complete = isComplete(digits)
+  const valid = isValidAuMobile(digits)
 
-  const onDigit = (d: string) => flow.setPhone(normalizePhone(digits + d))
-  const onDelete = () => flow.setPhone(digits.slice(0, -1))
+  const onDigit = (d: string) => {
+    setForcePrompted(false)
+    flow.setPhone(normalizePhone(digits + d))
+  }
+  const onDelete = () => {
+    setForcePrompted(false)
+    flow.setPhone(digits.slice(0, -1))
+  }
 
-  const onNext = async () => {
-    if (!complete) return
+  const proceed = async () => {
     const customer = await lookup.mutateAsync(digits)
     flow.setCustomer(customer)
     if (!customer) {
@@ -45,6 +55,17 @@ export function PhoneEntry() {
     }
   }
 
+  const onNext = async () => {
+    if (!complete) return
+    // Valid AU mobile -> proceed. Invalid -> first tap warns and arms the
+    // override; second tap ("Continue anyway") force-processes.
+    if (valid || forcePrompted) {
+      await proceed()
+    } else {
+      setForcePrompted(true)
+    }
+  }
+
   // After the redeem modal closes (redeemed or not), continue the flow.
   const onRedeemClose = () => {
     setRedeemFor(null)
@@ -52,7 +73,9 @@ export function PhoneEntry() {
   }
 
   return (
-    <KioskLayout showStartOver={false}>
+    // This screen drives its own initial redeem prompt, so suppress the shared
+    // persistent banner here (it appears on the later steps instead).
+    <KioskLayout showStartOver={false} showRedeemBanner={false}>
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-10 lg:grid-cols-2">
         {/* Left: loyalty program info card, always visible. */}
         <div className="order-2 lg:order-1">
@@ -66,18 +89,31 @@ export function PhoneEntry() {
           </h1>
 
           <div className="my-6 flex h-16 items-center justify-center rounded-2xl bg-black/40 text-4xl font-semibold tracking-wider text-white">
-            {formatPhone(digits) || <span className="text-white/30">(___) ___-____</span>}
+            {formatPhone(digits) || (
+              <span className="text-white/30">0400 000 000</span>
+            )}
           </div>
 
           <Keypad onDigit={onDigit} onDelete={onDelete} />
 
-          <div className="mt-8">
+          {/* Warn on an invalid AU mobile once the user has tried to continue. */}
+          {complete && !valid && (
+            <p className="mt-4 text-center text-lg text-amber-300">
+              ⚠ That doesn't look like an Australian mobile (should start with 04).
+            </p>
+          )}
+
+          <div className="mt-6">
             <NextButton
               onClick={onNext}
               disabled={!complete || lookup.isPending}
               className="w-full"
             >
-              {lookup.isPending ? 'Checking…' : 'NEXT'}
+              {lookup.isPending
+                ? 'Checking…'
+                : !valid && forcePrompted
+                  ? 'Continue anyway'
+                  : 'NEXT'}
             </NextButton>
           </div>
         </div>

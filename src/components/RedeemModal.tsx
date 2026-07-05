@@ -3,15 +3,20 @@ import type { Customer, LoyaltyProgram } from '../types'
 import { useRedeemPoints } from '../lib/queries'
 import { playChime } from '../lib/sound'
 
+export interface RedeemCloseResult {
+  redeemed: boolean
+  newBalance?: number // present when redeemed — the post-redeem points balance
+}
+
 interface RedeemModalProps {
   customer: Customer
   program: LoyaltyProgram
-  onClose: (redeemed: boolean) => void
+  onClose: (result: RedeemCloseResult) => void
 }
 
 // Kiosk redeem prompt: appears when a returning customer is at/over the reward
 // threshold. Plays a chime on mount to grab attention. On redeem, calls the
-// redeem_points RPC (subtracts the threshold) and reports back.
+// redeem_points RPC (subtracts the threshold) and reports the new balance back.
 export function RedeemModal({ customer, program, onClose }: RedeemModalProps) {
   const redeem = useRedeemPoints()
   const [done, setDone] = useState(false)
@@ -23,10 +28,10 @@ export function RedeemModal({ customer, program, onClose }: RedeemModalProps) {
 
   const onRedeem = async () => {
     try {
-      await redeem.mutateAsync(customer.id)
+      const result = await redeem.mutateAsync(customer.id)
       setDone(true)
-      // Brief confirmation, then close.
-      setTimeout(() => onClose(true), 1600)
+      // Brief confirmation, then close, reporting the new balance.
+      setTimeout(() => onClose({ redeemed: true, newBalance: result.pointsBalance }), 1600)
     } catch {
       // Error is surfaced below; leave the modal open.
     }
@@ -34,7 +39,7 @@ export function RedeemModal({ customer, program, onClose }: RedeemModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
-      <div className="w-full max-w-lg rounded-3xl bg-gradient-to-br from-purple-800 to-fuchsia-700 p-10 text-center text-white shadow-2xl">
+      <div className="w-full max-w-lg rounded-3xl bg-gradient-to-br from-brand-800 to-brand-700 p-10 text-center text-white shadow-2xl">
         {done ? (
           <>
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white/15">
@@ -62,7 +67,7 @@ export function RedeemModal({ customer, program, onClose }: RedeemModalProps) {
 
             <div className="mt-8 flex gap-4">
               <button
-                onClick={() => onClose(false)}
+                onClick={() => onClose({ redeemed: false })}
                 disabled={redeem.isPending}
                 className="flex-1 rounded-2xl bg-white/10 py-4 text-lg font-semibold text-white/80 hover:bg-white/20 disabled:opacity-50"
               >
@@ -71,7 +76,7 @@ export function RedeemModal({ customer, program, onClose }: RedeemModalProps) {
               <button
                 onClick={onRedeem}
                 disabled={redeem.isPending}
-                className="flex-1 rounded-2xl bg-white py-4 text-lg font-bold text-purple-800 hover:bg-white/90 disabled:opacity-50"
+                className="flex-1 rounded-2xl bg-white py-4 text-lg font-bold text-brand-800 hover:bg-white/90 disabled:opacity-50"
               >
                 {redeem.isPending ? 'Redeeming…' : 'Redeem now'}
               </button>

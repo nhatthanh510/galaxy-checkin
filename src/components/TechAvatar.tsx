@@ -6,7 +6,7 @@ interface TechAvatarProps {
   onClick: () => void
 }
 
-// Technician tile: photo when available, else a purple circle with the initial.
+// Technician tile: photo when available, else a brand-colored circle with the initial.
 export function TechAvatar({ technician, selected, onClick }: TechAvatarProps) {
   const initial = technician.name.charAt(0).toUpperCase()
   return (
@@ -15,7 +15,7 @@ export function TechAvatar({ technician, selected, onClick }: TechAvatarProps) {
       onClick={onClick}
       className={
         'flex flex-col items-center gap-3 rounded-2xl p-5 transition ' +
-        (selected ? 'bg-purple-600/30 ring-2 ring-purple-400' : 'bg-white/5 hover:bg-white/10')
+        (selected ? 'bg-brand-600/30 ring-2 ring-brand-400' : 'bg-white/5 hover:bg-white/10')
       }
     >
       {technician.photoUrl ? (
@@ -25,7 +25,7 @@ export function TechAvatar({ technician, selected, onClick }: TechAvatarProps) {
           className="h-24 w-24 rounded-full object-cover"
         />
       ) : (
-        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-purple-600 text-4xl font-bold text-white">
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-brand-600 text-4xl font-bold text-white">
           {initial}
         </div>
       )}

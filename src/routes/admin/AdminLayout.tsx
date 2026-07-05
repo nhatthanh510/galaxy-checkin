@@ -14,14 +14,16 @@ export function AdminLayout() {
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     'block rounded-lg px-4 py-2.5 text-sm font-medium ' +
-    (isActive ? 'bg-purple-600 text-white' : 'text-slate-600 hover:bg-slate-100')
+    (isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100')
 
   return (
     <div className="flex min-h-screen bg-slate-100 text-slate-800">
       <aside className="flex w-60 flex-col border-r border-slate-200 bg-white p-4">
-        <div className="mb-6 flex items-center gap-2 px-2">
-          <span className="text-2xl">💅</span>
-          <span className="font-bold">Galaxy Admin</span>
+        <div className="mb-6 flex flex-col gap-1 px-2">
+          <img src="/logo.png" alt="Galaxy Nails" className="h-7 w-auto self-start" />
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            Admin
+          </span>
         </div>
         <nav className="space-y-1">
           <NavLink to="/admin/customers" className={linkClass}>

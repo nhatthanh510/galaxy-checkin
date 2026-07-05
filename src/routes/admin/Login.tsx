@@ -46,7 +46,7 @@ export function Login() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
         />
 
         <label className="mt-4 block text-sm font-medium text-slate-600">Password</label>
@@ -55,7 +55,7 @@ export function Login() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
         />
 
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
@@ -68,7 +68,7 @@ export function Login() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-lg bg-purple-600 py-2.5 font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
+          className="mt-6 w-full rounded-lg bg-brand-600 py-2.5 font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
         >
           {submitting ? 'Signing in…' : 'Sign in'}
         </button>

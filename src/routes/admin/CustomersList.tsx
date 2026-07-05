@@ -1,21 +1,38 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useCustomers } from '../../lib/queries'
+import { useCustomers, useLoyaltyProgram } from '../../lib/queries'
 import { CSV_HEADERS, downloadCsv, toCsv } from '../../lib/csv'
 import { formatPhone } from '../../lib/phone'
 
 export function CustomersList() {
   const { data: customers, isLoading, error } = useCustomers()
+  const { data: program } = useLoyaltyProgram()
   const [search, setSearch] = useState('')
+  const [eligibleOnly, setEligibleOnly] = useState(false)
+
+  // A customer is redeem-eligible when their balance meets the active program's
+  // threshold. If there's no active program, nobody is eligible.
+  const threshold = program?.pointsPerReward ?? null
+  const isEligible = (points: number) => threshold != null && points >= threshold
 
   const filtered = useMemo(() => {
-    const list = customers ?? []
+    let list = customers ?? []
     const q = search.trim().toLowerCase()
-    if (!q) return list
-    return list.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q.replace(/\D/g, '')),
-    )
-  }, [customers, search])
+    if (q) {
+      list = list.filter(
+        (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q.replace(/\D/g, '')),
+      )
+    }
+    if (eligibleOnly && threshold != null) {
+      list = list.filter((c) => c.pointsBalance >= threshold)
+    }
+    return list
+  }, [customers, search, eligibleOnly, threshold])
+
+  const eligibleCount = useMemo(
+    () => (threshold == null ? 0 : (customers ?? []).filter((c) => c.pointsBalance >= threshold).length),
+    [customers, threshold],
+  )
 
   const onExport = () => {
     const rows: (string | number)[][] = [
@@ -32,7 +49,7 @@ export function CustomersList() {
         <div className="flex gap-2">
           <Link
             to="/admin/customers/import"
-            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500"
           >
             Import CSV
           </Link>
@@ -46,12 +63,28 @@ export function CustomersList() {
         </div>
       </div>
 
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search by name or phone…"
-        className="mb-4 w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-      />
+      <div className="mb-4 flex flex-wrap items-center gap-4">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or phone…"
+          className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+        />
+        {threshold != null && (
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={eligibleOnly}
+              onChange={(e) => setEligibleOnly(e.target.checked)}
+              className="h-4 w-4 accent-emerald-600"
+            />
+            Redeem-eligible only
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+              {eligibleCount}
+            </span>
+          </label>
+        )}
+      </div>
 
       {isLoading && <p className="text-slate-500">Loading customers…</p>}
       {error && <p className="text-red-600">{error.message}</p>}
@@ -68,18 +101,34 @@ export function CustomersList() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    <Link to={`/admin/customers/${c.id}`} className="font-medium text-purple-700 hover:underline">
-                      {c.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{formatPhone(c.phone)}</td>
-                  <td className="px-4 py-3 text-slate-600">{c.pointsBalance}</td>
-                  <td className="px-4 py-3 text-slate-600">{c.visitCount}</td>
-                </tr>
-              ))}
+              {filtered.map((c) => {
+                const eligible = isEligible(c.pointsBalance)
+                return (
+                  <tr
+                    key={c.id}
+                    className={
+                      'border-b border-slate-100 last:border-0 ' +
+                      (eligible ? 'bg-emerald-50 hover:bg-emerald-100' : 'hover:bg-slate-50')
+                    }
+                  >
+                    <td className="px-4 py-3">
+                      <Link to={`/admin/customers/${c.id}`} className="font-medium text-brand-700 hover:underline">
+                        {c.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{formatPhone(c.phone)}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-slate-600">{c.pointsBalance}</span>
+                      {eligible && (
+                        <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                          🎁 Redeemable
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">{c.visitCount}</td>
+                  </tr>
+                )
+              })}
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-slate-400">

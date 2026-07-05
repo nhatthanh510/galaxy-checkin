@@ -19,7 +19,7 @@ export function NextButton({
     'min-h-16 px-10 rounded-2xl text-2xl font-bold tracking-wide transition-colors ' +
     'active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none'
   const variants: Record<Variant, string> = {
-    primary: 'bg-purple-600 text-white hover:bg-purple-500',
+    primary: 'bg-brand-600 text-white hover:bg-brand-500',
     ghost: 'bg-white/5 text-white/80 hover:bg-white/10',
   }
   return (

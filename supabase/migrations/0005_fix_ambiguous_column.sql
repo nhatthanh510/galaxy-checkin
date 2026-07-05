@@ -94,7 +94,9 @@ begin
     raise exception 'customer not found';
   end if;
 
-  select points_per_reward, reward_amount
+  -- Qualify reward_amount with the table name: it also names a RETURNS TABLE
+  -- output param, so an unqualified reference is ambiguous (error 42702).
+  select loyalty_program.points_per_reward, loyalty_program.reward_amount
     into v_threshold, v_reward
     from public.loyalty_program
     where active = true

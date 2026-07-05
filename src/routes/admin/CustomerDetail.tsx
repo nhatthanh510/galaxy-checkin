@@ -115,7 +115,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
           />
         </label>
         <label className="block">
@@ -124,7 +124,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
             type="number"
             value={points}
             onChange={(e) => setPoints(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
           />
         </label>
       </div>
@@ -132,7 +132,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
         <button
           onClick={onSave}
           disabled={update.isPending}
-          className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
         >
           {update.isPending ? 'Saving…' : 'Save'}
         </button>

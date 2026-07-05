@@ -151,7 +151,7 @@ export function CustomerImport() {
             <button
               onClick={onConfirm}
               disabled={valid.length === 0 || upsert.isPending}
-              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
             >
               {upsert.isPending ? 'Importing…' : `Import ${valid.length} rows`}
             </button>

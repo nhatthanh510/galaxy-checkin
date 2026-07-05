@@ -27,7 +27,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-100 text-slate-700">
         <h1 className="text-2xl font-bold">Not authorized</h1>
         <p className="text-slate-500">This account does not have admin access.</p>
-        <a href="/admin/login" className="text-purple-600 underline">
+        <a href="/admin/login" className="text-brand-600 underline">
           Sign in with a different account
         </a>
       </div>

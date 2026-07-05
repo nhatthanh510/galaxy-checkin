@@ -14,14 +14,14 @@ export function ServiceRow({ service, checked, onToggle }: ServiceRowProps) {
       onClick={onToggle}
       className={
         'flex w-full items-center justify-between rounded-2xl px-6 py-5 text-left transition ' +
-        (checked ? 'bg-purple-600/25 ring-2 ring-purple-400' : 'bg-white/5 hover:bg-white/10')
+        (checked ? 'bg-brand-600/25 ring-2 ring-brand-400' : 'bg-white/5 hover:bg-white/10')
       }
     >
       <span className="flex items-center gap-4">
         <span
           className={
             'flex h-8 w-8 items-center justify-center rounded-lg border-2 ' +
-            (checked ? 'border-purple-400 bg-purple-500 text-white' : 'border-white/30')
+            (checked ? 'border-brand-400 bg-brand-500 text-white' : 'border-white/30')
           }
         >
           {checked ? '✓' : ''}

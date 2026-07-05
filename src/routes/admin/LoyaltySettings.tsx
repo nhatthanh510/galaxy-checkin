@@ -44,7 +44,7 @@ export function LoyaltySettings() {
         </div>
         <button
           onClick={() => setMode({ kind: 'create' })}
-          className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500"
         >
           New program
         </button>
@@ -103,7 +103,7 @@ function ProgramRow({
   return (
     <tr className="border-b border-slate-100 last:border-0">
       <td className="px-4 py-3">
-        <button onClick={onView} className="font-medium text-purple-700 hover:underline">
+        <button onClick={onView} className="font-medium text-brand-700 hover:underline">
           {program.name}
         </button>
         <div className="text-xs text-slate-400">{program.description}</div>
@@ -126,7 +126,7 @@ function ProgramRow({
         <button onClick={onView} className="text-sm text-slate-500 hover:text-slate-700">
           View
         </button>
-        <button onClick={onEdit} className="ml-3 text-sm text-purple-600 hover:text-purple-800">
+        <button onClick={onEdit} className="ml-3 text-sm text-brand-600 hover:text-brand-800">
           Edit
         </button>
         <button
@@ -218,7 +218,7 @@ function ProgramForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="10 Point"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
           />
         </label>
         <label className="block">
@@ -227,7 +227,7 @@ function ProgramForm({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="10 points get $10 off"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
           />
         </label>
         <div className="grid grid-cols-2 gap-4">
@@ -237,7 +237,7 @@ function ProgramForm({
               type="number"
               value={pointsPerReward}
               onChange={(e) => setPointsPerReward(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
             />
           </label>
           <label className="block">
@@ -246,7 +246,7 @@ function ProgramForm({
               type="number"
               value={rewardAmount}
               onChange={(e) => setRewardAmount(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
             />
           </label>
         </div>
@@ -255,7 +255,7 @@ function ProgramForm({
             type="checkbox"
             checked={active}
             onChange={(e) => setActive(e.target.checked)}
-            className="h-4 w-4 accent-purple-600"
+            className="h-4 w-4 accent-brand-600"
           />
           <span className="text-sm text-slate-600">
             Active (shown on the kiosk — only one should be active)
@@ -266,7 +266,7 @@ function ProgramForm({
           <button
             onClick={onSubmit}
             disabled={pending || !name.trim()}
-            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500 disabled:opacity-50"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
           >
             {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Create'}
           </button>

@@ -11,7 +11,7 @@ export function ConsentCheckbox({ checked, onChange }: ConsentCheckboxProps) {
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 h-7 w-7 shrink-0 accent-purple-600"
+        className="mt-1 h-7 w-7 shrink-0 accent-brand-600"
       />
       <span className="text-sm leading-relaxed text-white/60">
         By checking this box and clicking NEXT, you give Galaxy Nail Spa consent to contact
