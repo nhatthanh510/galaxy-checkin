@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { Customer } from '../types'
 import { useRedeemPoints, useClaimBirthday } from '../lib/queries'
 import { playChime } from '../lib/sound'
@@ -33,6 +33,8 @@ export function PromotionsModal({
   const redeem = useRedeemPoints()
   const claim = useClaimBirthday()
   const currentYear = new Date().getFullYear()
+  // Which promo is currently being acted on — so only that button shows loading.
+  const [actingId, setActingId] = useState<string | null>(null)
 
   // Attention chime when the rewards prompt appears.
   useEffect(() => {
@@ -40,19 +42,24 @@ export function PromotionsModal({
   }, [])
 
   const onAct = async (promo: Promotion) => {
-    if (promo.kind === 'points') {
-      const result = await redeem.mutateAsync({
-        customerId: customer.id,
-        programId: promo.programId ?? null,
-      })
-      onCustomerChange({ pointsBalance: result.pointsBalance })
-    } else {
-      await claim.mutateAsync(customer.id)
-      onCustomerChange({ birthdayRedeemedYear: currentYear })
+    setActingId(promo.id)
+    try {
+      if (promo.kind === 'points') {
+        const result = await redeem.mutateAsync({
+          customerId: customer.id,
+          programId: promo.programId ?? null,
+        })
+        onCustomerChange({ pointsBalance: result.pointsBalance })
+      } else {
+        await claim.mutateAsync(customer.id)
+        onCustomerChange({ birthdayRedeemedYear: currentYear })
+      }
+    } finally {
+      setActingId(null)
     }
   }
 
-  const busy = redeem.isPending || claim.isPending
+  const busy = actingId != null
   const error = redeem.error || claim.error
 
   return (
@@ -88,7 +95,7 @@ export function PromotionsModal({
                   disabled={busy}
                   className="shrink-0 rounded-xl bg-brand-500 px-5 py-3 text-base font-bold text-white hover:bg-brand-400 disabled:opacity-50"
                 >
-                  {busy ? '…' : promo.actionLabel}
+                  {actingId === promo.id ? '…' : promo.actionLabel}
                 </button>
               </li>
             ))}

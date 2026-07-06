@@ -214,12 +214,15 @@ function ProfileForm({ customer }: { customer: Customer }) {
 
   const onSave = async () => {
     setSaved(false)
-    await update.mutateAsync({
+    const updated = await update.mutateAsync({
       id: customer.id,
       name: name.trim(),
       pointsBalance: Number(points) || 0,
       birthday: partsToDateString(birthday),
     })
+    // Reflect the saved balance so the redeemable-rewards section recomputes.
+    setBalance(updated.pointsBalance)
+    setPoints(String(updated.pointsBalance))
     setSaved(true)
   }
 

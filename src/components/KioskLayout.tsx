@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useKioskFlow } from '../routes/kiosk/useKioskFlow'
+import { useRefreshCustomerOnFocus } from '../routes/kiosk/useRefreshCustomerOnFocus'
 import { useAuth } from '../lib/auth/useAuth'
 import { PromotionsLink } from './PromotionsLink'
 
@@ -27,6 +28,10 @@ export function KioskLayout({
   const navigate = useNavigate()
   const { reset } = useKioskFlow()
   const { isAdmin, signOut } = useAuth()
+
+  // Reflect external redeems (e.g. from the admin side) on the active kiosk
+  // customer when the tab regains focus.
+  useRefreshCustomerOnFocus()
 
   const startOver = () => {
     reset()

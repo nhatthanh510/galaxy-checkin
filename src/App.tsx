@@ -21,7 +21,17 @@ import { StaffManage } from './routes/admin/StaffManage'
 import { Settings } from './routes/admin/Settings'
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      retry: false,
+      // Keep screens fresh across tabs/devices: when staff switch back to a tab
+      // (or a component remounts), refetch data that's older than staleTime. This
+      // is how an admin sees a redeem that happened on another screen.
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      staleTime: 10_000, // 10s: fresh enough to avoid a refetch storm, stale enough to update on focus
+    },
+  },
 })
 
 export default function App() {

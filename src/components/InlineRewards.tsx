@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Customer } from '../types'
 import { useRedeemPoints, useClaimBirthday } from '../lib/queries'
 import { useEligiblePromotions } from '../lib/useEligiblePromotions'
@@ -18,24 +19,32 @@ export function InlineRewards({ customer, onCustomerChange }: InlineRewardsProps
   const redeem = useRedeemPoints()
   const claim = useClaimBirthday()
   const currentYear = new Date().getFullYear()
-
-  if (promotions.length === 0) return null
-
-  const busy = redeem.isPending || claim.isPending
-  const error = redeem.error || claim.error
+  // Which promo is currently being acted on — so only that button shows loading.
+  const [actingId, setActingId] = useState<string | null>(null)
 
   const onAct = async (promo: Promotion) => {
-    if (promo.kind === 'points') {
-      const result = await redeem.mutateAsync({
-        customerId: customer.id,
-        programId: promo.programId ?? null,
-      })
-      onCustomerChange({ pointsBalance: result.pointsBalance })
-    } else {
-      await claim.mutateAsync(customer.id)
-      onCustomerChange({ birthdayRedeemedYear: currentYear })
+    setActingId(promo.id)
+    try {
+      if (promo.kind === 'points') {
+        const result = await redeem.mutateAsync({
+          customerId: customer.id,
+          programId: promo.programId ?? null,
+        })
+        onCustomerChange({ pointsBalance: result.pointsBalance })
+      } else {
+        await claim.mutateAsync(customer.id)
+        onCustomerChange({ birthdayRedeemedYear: currentYear })
+      }
+    } finally {
+      setActingId(null)
     }
   }
+
+  // Early-return AFTER all hooks (rules of hooks).
+  if (promotions.length === 0) return null
+
+  const busy = actingId != null
+  const error = redeem.error || claim.error
 
   return (
     <div className="mt-4 rounded-2xl border border-brand-400/30 bg-brand-500/10 p-5">
@@ -56,7 +65,7 @@ export function InlineRewards({ customer, onCustomerChange }: InlineRewardsProps
               disabled={busy}
               className="shrink-0 rounded-xl bg-brand-500 px-5 py-2.5 text-base font-bold text-white hover:bg-brand-400 disabled:opacity-50"
             >
-              {busy ? '…' : promo.actionLabel}
+              {actingId === promo.id ? '…' : promo.actionLabel}
             </button>
           </div>
         ))}
