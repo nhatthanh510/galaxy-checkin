@@ -34,6 +34,7 @@ export function Success() {
         customerId: flow.customer?.id ?? null,
         serviceIds: flow.selectedServiceIds,
         technicianId: flow.technicianId,
+        birthday: flow.birthday,
       })
       .then((result) => setPoints(result.customer.pointsBalance))
       .catch(() => setPoints(flow.customer?.pointsBalance ?? 0))

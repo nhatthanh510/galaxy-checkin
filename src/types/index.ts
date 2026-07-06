@@ -8,12 +8,21 @@ export interface Customer {
   name: string
   visitCount: number
   pointsBalance: number
+  birthday: string | null // "YYYY-MM-DD" or null
+  birthdayRedeemedYear: number | null // year the birthday benefit was last claimed
+}
+
+export interface ServiceGroup {
+  id: string
+  name: string
+  active: boolean
 }
 
 export interface Service {
   id: string
   name: string
   category: string
+  groupId: string | null
   price: number // in dollars
   durationMinutes: number
   active: boolean
@@ -63,6 +72,22 @@ export interface CreateCheckinInput {
   customerId: string | null
   serviceIds: string[]
   technicianId: string | null
+  birthday: string | null // "YYYY-MM-DD" or null
+}
+
+// App-wide configurable settings (single row).
+export interface AppSettings {
+  birthdayDaysBefore: number
+  birthdayDaysAfter: number
+}
+
+// One row of a customer's visit history, with resolved service + staff names.
+export interface CheckinHistoryItem {
+  id: string
+  status: CheckinStatus
+  createdAt: string
+  serviceNames: string[]
+  technicianName: string | null
 }
 
 export interface CreateCheckinResult {
@@ -81,16 +106,30 @@ export interface CustomerRow {
   name: string
   visit_count: number
   points_balance: number
+  birthday: string | null
+  birthday_redeemed_year: number | null
   created_at?: string
+}
+
+export interface AppSettingsRow {
+  birthday_days_before: number
+  birthday_days_after: number
 }
 
 export interface ServiceRow {
   id: string
   name: string
   category: string
+  group_id: string | null
   price: number
   duration_minutes: number
   active?: boolean
+}
+
+export interface ServiceGroupRow {
+  id: string
+  name: string
+  active: boolean
 }
 
 export interface TechnicianRow {

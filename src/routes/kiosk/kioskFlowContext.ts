@@ -9,6 +9,7 @@ import type { Customer } from '../../types'
 export interface FlowState {
   phone: string // digits only
   name: string
+  birthday: string | null // "YYYY-MM-DD" or null (new customers only)
   customer: Customer | null // matched known customer, else null
   selectedServiceIds: string[]
   technicianId: string | null
@@ -17,6 +18,7 @@ export interface FlowState {
 export interface FlowContextValue extends FlowState {
   setPhone: (phone: string) => void
   setName: (name: string) => void
+  setBirthday: (birthday: string | null) => void
   setCustomer: (customer: Customer | null) => void
   toggleService: (serviceId: string) => void
   setTechnician: (technicianId: string | null) => void

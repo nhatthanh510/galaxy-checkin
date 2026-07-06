@@ -43,3 +43,19 @@ export {
   techniciansAdminKey,
 } from './useTechniciansAdmin'
 export type { TechnicianInput } from './useTechniciansAdmin'
+
+// App settings (birthday window).
+export { useSettings, useUpdateSettings, settingsKey } from './useSettings'
+
+// Service groups (admin CRUD; kiosk read).
+export {
+  useServiceGroups,
+  useCreateServiceGroup,
+  useUpdateServiceGroup,
+  useDeleteServiceGroup,
+  serviceGroupsKey,
+} from './useServiceGroups'
+export type { ServiceGroupInput } from './useServiceGroups'
+
+// Birthday benefit claim.
+export { useClaimBirthday } from './useClaimBirthday'

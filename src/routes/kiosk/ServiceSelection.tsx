@@ -8,8 +8,8 @@ import type { Service } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
 
 // Step 3: service selection (optional — SKIP or NEXT). For a known customer this
-// is the first screen after phone entry, so we greet them; the persistent
-// RedeemBanner (in KioskLayout) handles the redeem entry point.
+// is the first screen after phone entry, so we greet them; the unified
+// PromotionsLink (in the KioskLayout header) handles all reward actions.
 export function ServiceSelection() {
   const navigate = useNavigate()
   const flow = useKioskFlow()
@@ -34,8 +34,8 @@ export function ServiceSelection() {
               <span className="font-bold text-brand-300">{customer.pointsBalance}</span>{' '}
               {customer.pointsBalance === 1 ? 'point' : 'points'}.
             </p>
-            {/* The interactive "Redeem now" entry point is the persistent
-                RedeemBanner in KioskLayout (shown above the page content). */}
+            {/* Reward actions (redeem points, claim birthday) live in the
+                unified "rewards available" link in the header. */}
           </div>
         )}
 

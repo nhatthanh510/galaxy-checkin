@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useKioskFlow } from '../routes/kiosk/useKioskFlow'
-import { RedeemBanner } from './RedeemBanner'
+import { PromotionsLink } from './PromotionsLink'
 
 interface KioskLayoutOptions {
   showStartOver?: boolean
-  // Show the persistent redeem banner (when the identified customer is eligible).
-  // Off on the phone-entry screen, which drives its own initial redeem prompt.
-  showRedeemBanner?: boolean
+  // Show the unified "rewards available" promotions link (when the identified
+  // customer is eligible for any promo). Off on the phone-entry screen, which
+  // drives its own initial redeem prompt.
+  showPromotions?: boolean
 }
 
 interface KioskLayoutProps extends KioskLayoutOptions {
@@ -19,7 +20,7 @@ interface KioskLayoutProps extends KioskLayoutOptions {
 export function KioskLayout({
   children,
   showStartOver = true,
-  showRedeemBanner = true,
+  showPromotions = true,
 }: KioskLayoutProps) {
   const navigate = useNavigate()
   const { reset } = useKioskFlow()
@@ -38,8 +39,8 @@ export function KioskLayout({
           <img src="/logo.png" alt="Galaxy Nails" className="h-8 w-auto" />
         </div>
         <div className="flex items-center gap-5">
-          {/* Persistent redeem link (only shows when the customer is eligible). */}
-          {showRedeemBanner && <RedeemBanner />}
+          {/* Unified rewards link (only shows when any promo is eligible). */}
+          {showPromotions && <PromotionsLink />}
           {showStartOver && (
             <button
               type="button"

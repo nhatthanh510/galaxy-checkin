@@ -75,7 +75,7 @@ export function PhoneEntry() {
   return (
     // This screen drives its own initial redeem prompt, so suppress the shared
     // persistent banner here (it appears on the later steps instead).
-    <KioskLayout showStartOver={false} showRedeemBanner={false}>
+    <KioskLayout showStartOver={false} showPromotions={false}>
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-10 lg:grid-cols-2">
         {/* Left: loyalty program info card, always visible. */}
         <div className="order-2 lg:order-1">

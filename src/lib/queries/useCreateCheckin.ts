@@ -19,6 +19,7 @@ export function useCreateCheckin() {
         p_name: input.name,
         p_service_ids: input.serviceIds,
         p_technician_id: input.technicianId,
+        p_birthday: input.birthday,
       })
       if (error) throw error
 
@@ -41,6 +42,8 @@ export function useCreateCheckin() {
           name: row.customer_name,
           visitCount: row.visit_count,
           pointsBalance: row.points_balance,
+          birthday: input.birthday,
+          birthdayRedeemedYear: null,
         },
       }
 

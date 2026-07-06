@@ -1,45 +1,43 @@
 import { useState } from 'react'
 import {
-  useServicesAdmin,
-  useCreateService,
-  useUpdateService,
-  useDeleteService,
   useServiceGroups,
-  type ServiceInput,
+  useCreateServiceGroup,
+  useUpdateServiceGroup,
+  useDeleteServiceGroup,
+  type ServiceGroupInput,
 } from '../../lib/queries'
-import type { Service } from '../../types'
+import type { ServiceGroup } from '../../types'
 
-type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; service: Service }
+type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; group: ServiceGroup }
 
-// Admin: CRUD over the service catalog. The kiosk shows only active services.
-export function ServicesManage() {
-  const { data: services, isLoading, error } = useServicesAdmin()
+// Admin: CRUD over service groups. Services are assigned to a group; the kiosk
+// groups its service list by these.
+export function GroupsManage() {
+  const { data: groups, isLoading, error } = useServiceGroups(true)
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
 
   if (isLoading) return <p className="text-slate-500">Loading…</p>
   if (error) return <p className="text-red-600">{error.message}</p>
 
-  if (mode.kind === 'create') {
-    return <ServiceForm onDone={() => setMode({ kind: 'list' })} />
-  }
+  if (mode.kind === 'create') return <GroupForm onDone={() => setMode({ kind: 'list' })} />
   if (mode.kind === 'edit') {
-    return <ServiceForm service={mode.service} onDone={() => setMode({ kind: 'list' })} />
+    return <GroupForm group={mode.group} onDone={() => setMode({ kind: 'list' })} />
   }
 
   return (
     <div className="max-w-3xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Services</h1>
+          <h1 className="text-2xl font-bold">Service groups</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Only <span className="font-medium">active</span> services appear on the kiosk.
+            Services are organised into these groups on the kiosk.
           </p>
         </div>
         <button
           onClick={() => setMode({ kind: 'create' })}
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500"
         >
-          New service
+          New group
         </button>
       </div>
 
@@ -48,19 +46,18 @@ export function ServicesManage() {
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Category</th>
               <th className="px-4 py-3 font-medium">Active</th>
               <th className="px-4 py-3 font-medium text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {(services ?? []).map((s) => (
-              <ServiceRow key={s.id} service={s} onEdit={() => setMode({ kind: 'edit', service: s })} />
+            {(groups ?? []).map((g) => (
+              <GroupRow key={g.id} group={g} onEdit={() => setMode({ kind: 'edit', group: g })} />
             ))}
-            {services?.length === 0 && (
+            {groups?.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
-                  No services yet. Add one to show it on the kiosk.
+                <td colSpan={3} className="px-4 py-8 text-center text-slate-400">
+                  No groups yet. Create one to organise services.
                 </td>
               </tr>
             )}
@@ -71,19 +68,26 @@ export function ServicesManage() {
   )
 }
 
-function ServiceRow({ service, onEdit }: { service: Service; onEdit: () => void }) {
-  const del = useDeleteService()
+function GroupRow({ group, onEdit }: { group: ServiceGroup; onEdit: () => void }) {
+  const del = useDeleteServiceGroup()
   const onDelete = () => {
-    if (window.confirm(`Delete "${service.name}"? This cannot be undone.`)) {
-      del.mutate(service.id)
+    if (
+      window.confirm(
+        `Delete "${group.name}"? Services in this group will become ungrouped.`,
+      )
+    ) {
+      del.mutate(group.id)
     }
   }
   return (
     <tr className="border-b border-slate-100 last:border-0">
-      <td className="px-4 py-3 font-medium text-slate-800">{service.name}</td>
-      <td className="px-4 py-3 text-slate-600">{service.category}</td>
+      <td className="px-4 py-3 font-medium text-slate-800">{group.name}</td>
       <td className="px-4 py-3">
-        <ActiveBadge active={service.active} />
+        {group.active ? (
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">active</span>
+        ) : (
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">inactive</span>
+        )}
       </td>
       <td className="px-4 py-3 text-right">
         <button onClick={onEdit} className="text-sm text-brand-600 hover:text-brand-800">
@@ -101,51 +105,29 @@ function ServiceRow({ service, onEdit }: { service: Service; onEdit: () => void 
   )
 }
 
-function ActiveBadge({ active }: { active: boolean }) {
-  return active ? (
-    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">active</span>
-  ) : (
-    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">inactive</span>
-  )
-}
-
-function ServiceForm({ service, onDone }: { service?: Service; onDone: () => void }) {
-  const create = useCreateService()
-  const update = useUpdateService()
-  const { data: groups } = useServiceGroups(true)
-  const isEdit = Boolean(service)
-
-  const [name, setName] = useState(service?.name ?? '')
-  const [groupId, setGroupId] = useState(service?.groupId ?? '')
-  const [active, setActive] = useState(service?.active ?? true)
+function GroupForm({ group, onDone }: { group?: ServiceGroup; onDone: () => void }) {
+  const create = useCreateServiceGroup()
+  const update = useUpdateServiceGroup()
+  const isEdit = Boolean(group)
+  const [name, setName] = useState(group?.name ?? '')
+  const [active, setActive] = useState(group?.active ?? true)
 
   const pending = create.isPending || update.isPending
   const err = create.error || update.error
 
   const onSubmit = async () => {
-    // Keep the denormalized `category` in sync with the chosen group's name so
-    // the kiosk fallback and existing displays still work.
-    const group = (groups ?? []).find((g) => g.id === groupId)
-    const input: ServiceInput = {
-      name: name.trim(),
-      groupId: groupId || null,
-      category: group?.name ?? service?.category ?? '',
-      active,
-    }
-    if (isEdit && service) {
-      await update.mutateAsync({ id: service.id, ...input })
-    } else {
-      await create.mutateAsync(input)
-    }
+    const input: ServiceGroupInput = { name: name.trim(), active }
+    if (isEdit && group) await update.mutateAsync({ id: group.id, ...input })
+    else await create.mutateAsync(input)
     onDone()
   }
 
   return (
     <div className="max-w-xl">
       <button onClick={onDone} className="text-sm text-slate-500 hover:text-slate-700">
-        ← Back to services
+        ← Back to groups
       </button>
-      <h1 className="mt-2 text-2xl font-bold">{isEdit ? 'Edit service' : 'New service'}</h1>
+      <h1 className="mt-2 text-2xl font-bold">{isEdit ? 'Edit group' : 'New group'}</h1>
 
       <div className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-white p-6">
         <label className="block">
@@ -153,25 +135,9 @@ function ServiceForm({ service, onDone }: { service?: Service; onDone: () => voi
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Regular Manicure"
+            placeholder="Manicure"
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
           />
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-slate-600">Group</span>
-          <select
-            value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-          >
-            <option value="">— No group —</option>
-            {(groups ?? []).map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-                {g.active ? '' : ' (inactive)'}
-              </option>
-            ))}
-          </select>
         </label>
         <label className="flex items-center gap-2">
           <input

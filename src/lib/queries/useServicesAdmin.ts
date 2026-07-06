@@ -24,11 +24,17 @@ export function useServicesAdmin() {
 export interface ServiceInput {
   name: string
   category: string
+  groupId: string | null
   active: boolean
 }
 
 function toRow(input: ServiceInput) {
-  return { name: input.name, category: input.category, active: input.active }
+  return {
+    name: input.name,
+    category: input.category,
+    group_id: input.groupId,
+    active: input.active,
+  }
 }
 
 // Invalidate both the admin list and the kiosk's active-only query.

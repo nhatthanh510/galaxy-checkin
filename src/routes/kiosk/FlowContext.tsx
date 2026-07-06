@@ -5,6 +5,7 @@ import { FlowContext, type FlowContextValue, type FlowState } from './kioskFlowC
 const emptyState: FlowState = {
   phone: '',
   name: '',
+  birthday: null,
   customer: null,
   selectedServiceIds: [],
   technicianId: null,
@@ -15,6 +16,10 @@ export function KioskFlowProvider({ children }: { children: ReactNode }) {
 
   const setPhone = useCallback((phone: string) => setState((s) => ({ ...s, phone })), [])
   const setName = useCallback((name: string) => setState((s) => ({ ...s, name })), [])
+  const setBirthday = useCallback(
+    (birthday: string | null) => setState((s) => ({ ...s, birthday })),
+    [],
+  )
   const setCustomer = useCallback(
     (customer: Customer | null) => setState((s) => ({ ...s, customer })),
     [],
@@ -40,12 +45,13 @@ export function KioskFlowProvider({ children }: { children: ReactNode }) {
       ...state,
       setPhone,
       setName,
+      setBirthday,
       setCustomer,
       toggleService,
       setTechnician,
       reset,
     }),
-    [state, setPhone, setName, setCustomer, toggleService, setTechnician, reset],
+    [state, setPhone, setName, setBirthday, setCustomer, toggleService, setTechnician, reset],
   )
 
   return <FlowContext.Provider value={value}>{children}</FlowContext.Provider>

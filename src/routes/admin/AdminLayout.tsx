@@ -32,11 +32,17 @@ export function AdminLayout() {
           <NavLink to="/admin/services" className={linkClass}>
             Services
           </NavLink>
+          <NavLink to="/admin/groups" className={linkClass}>
+            Groups
+          </NavLink>
           <NavLink to="/admin/staff" className={linkClass}>
             Preferred staff
           </NavLink>
           <NavLink to="/admin/loyalty" className={linkClass}>
             Loyalty settings
+          </NavLink>
+          <NavLink to="/admin/settings" className={linkClass}>
+            Settings
           </NavLink>
         </nav>
         <div className="mt-auto border-t border-slate-200 pt-4">

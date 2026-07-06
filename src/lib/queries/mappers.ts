@@ -7,6 +7,8 @@ import type {
   LoyaltyTransaction,
   LoyaltyTransactionRow,
   Service,
+  ServiceGroup,
+  ServiceGroupRow,
   ServiceRow,
   Technician,
   TechnicianRow,
@@ -19,6 +21,8 @@ export function mapCustomer(row: CustomerRow): Customer {
     name: row.name,
     visitCount: row.visit_count,
     pointsBalance: row.points_balance,
+    birthday: row.birthday ?? null,
+    birthdayRedeemedYear: row.birthday_redeemed_year ?? null,
   }
 }
 
@@ -27,10 +31,15 @@ export function mapService(row: ServiceRow): Service {
     id: row.id,
     name: row.name,
     category: row.category,
+    groupId: row.group_id ?? null,
     price: Number(row.price),
     durationMinutes: row.duration_minutes,
     active: row.active ?? true,
   }
+}
+
+export function mapServiceGroup(row: ServiceGroupRow): ServiceGroup {
+  return { id: row.id, name: row.name, active: row.active }
 }
 
 export function mapTechnician(row: TechnicianRow): Technician {

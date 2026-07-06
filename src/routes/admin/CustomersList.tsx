@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useCustomers, useLoyaltyProgram } from '../../lib/queries'
+import { useCustomers, useLoyaltyProgram, useSettings } from '../../lib/queries'
 import { CSV_HEADERS, downloadCsv, toCsv } from '../../lib/csv'
 import { formatPhone } from '../../lib/phone'
+import { formatBirthday, isBirthdaySoon, shouldRemindBirthday } from '../../lib/birthday'
 
 export function CustomersList() {
   const { data: customers, isLoading, error } = useCustomers()
   const { data: program } = useLoyaltyProgram()
+  const { data: settings } = useSettings()
   const [search, setSearch] = useState('')
   const [eligibleOnly, setEligibleOnly] = useState(false)
 
@@ -14,6 +16,23 @@ export function CustomersList() {
   // threshold. If there's no active program, nobody is eligible.
   const threshold = program?.pointsPerReward ?? null
   const isEligible = (points: number) => threshold != null && points >= threshold
+
+  // Birthday status for a customer, using the configured window (default 7/7):
+  //   'soon'     -> in window, discount NOT yet claimed this year (reminder)
+  //   'redeemed' -> in window, already claimed this year
+  //   'none'     -> outside the window
+  const today = new Date()
+  const bdayBefore = settings?.birthdayDaysBefore ?? 7
+  const bdayAfter = settings?.birthdayDaysAfter ?? 7
+  const birthdayStatus = (
+    b: string | null,
+    redeemedYear: number | null,
+  ): 'soon' | 'redeemed' | 'none' => {
+    if (!isBirthdaySoon(b, today, bdayBefore, bdayAfter)) return 'none'
+    return shouldRemindBirthday(b, redeemedYear, today, bdayBefore, bdayAfter)
+      ? 'soon'
+      : 'redeemed'
+  }
 
   const filtered = useMemo(() => {
     let list = customers ?? []
@@ -96,6 +115,7 @@ export function CustomersList() {
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Phone</th>
+                <th className="px-4 py-3 font-medium">DoB</th>
                 <th className="px-4 py-3 font-medium">Points</th>
                 <th className="px-4 py-3 font-medium">Visits</th>
               </tr>
@@ -103,12 +123,17 @@ export function CustomersList() {
             <tbody>
               {filtered.map((c) => {
                 const eligible = isEligible(c.pointsBalance)
+                const bday = birthdayStatus(c.birthday, c.birthdayRedeemedYear)
                 return (
                   <tr
                     key={c.id}
                     className={
                       'border-b border-slate-100 last:border-0 ' +
-                      (eligible ? 'bg-emerald-50 hover:bg-emerald-100' : 'hover:bg-slate-50')
+                      (bday === 'soon'
+                        ? 'bg-pink-50 hover:bg-pink-100'
+                        : eligible
+                          ? 'bg-emerald-50 hover:bg-emerald-100'
+                          : 'hover:bg-slate-50')
                     }
                   >
                     <td className="px-4 py-3">
@@ -117,6 +142,19 @@ export function CustomersList() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-slate-600">{formatPhone(c.phone)}</td>
+                    <td className="px-4 py-3">
+                      <span className="text-slate-600">{formatBirthday(c.birthday)}</span>
+                      {bday === 'soon' && (
+                        <span className="ml-2 rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">
+                          🎂 soon
+                        </span>
+                      )}
+                      {bday === 'redeemed' && (
+                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                          ✓ redeemed
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <span className="text-slate-600">{c.pointsBalance}</span>
                       {eligible && (
@@ -131,7 +169,7 @@ export function CustomersList() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
                     No customers found.
                   </td>
                 </tr>
