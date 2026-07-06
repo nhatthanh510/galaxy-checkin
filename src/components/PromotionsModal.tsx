@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import type { Customer } from '../types'
 import { useRedeemPoints, useClaimBirthday } from '../lib/queries'
+import { playChime } from '../lib/sound'
 
 // One eligible promotion the customer can act on right now. Multiple 'points'
 // promos can coexist (one per active loyalty program), so each has a unique id.
@@ -31,6 +33,11 @@ export function PromotionsModal({
   const redeem = useRedeemPoints()
   const claim = useClaimBirthday()
   const currentYear = new Date().getFullYear()
+
+  // Attention chime when the rewards prompt appears.
+  useEffect(() => {
+    playChime()
+  }, [])
 
   const onAct = async (promo: Promotion) => {
     if (promo.kind === 'points') {

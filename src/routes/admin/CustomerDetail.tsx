@@ -3,12 +3,17 @@ import { Link, useParams } from 'react-router-dom'
 import {
   useCustomer,
   useUpdateCustomer,
-  useLoyaltyProgram,
+  useActiveLoyaltyPrograms,
   useRedeemPoints,
   useClaimBirthday,
   useSettings,
 } from '../../lib/queries'
-import type { CheckinHistoryItem, Customer, LoyaltyTransaction } from '../../types'
+import type {
+  CheckinHistoryItem,
+  Customer,
+  LoyaltyProgram,
+  LoyaltyTransaction,
+} from '../../types'
 import { formatPhone } from '../../lib/phone'
 import { formatReward } from '../../lib/reward'
 import { Pagination } from '../../components/Pagination'
@@ -17,9 +22,10 @@ import {
   BirthdayDropdowns,
 } from '../../components/BirthdayDropdowns'
 import {
+  birthdayStatus,
+  birthdayStatusBadge,
   dateStringToParts,
   formatBirthday,
-  isBirthdaySoon,
   partsToDateString,
   shouldRemindBirthday,
 } from '../../lib/birthday'
@@ -34,18 +40,17 @@ export function CustomerDetail() {
   if (!data) return null
 
   const { customer, checkins, transactions } = data
-  const inWindow =
-    settings != null &&
-    isBirthdaySoon(customer.birthday, new Date(), settings.birthdayDaysBefore, settings.birthdayDaysAfter)
-  const remind =
-    settings != null &&
-    shouldRemindBirthday(
-      customer.birthday,
-      customer.birthdayRedeemedYear,
-      new Date(),
-      settings.birthdayDaysBefore,
-      settings.birthdayDaysAfter,
-    )
+  const bdayBadge = settings
+    ? birthdayStatusBadge(
+        birthdayStatus(
+          customer.birthday,
+          customer.birthdayRedeemedYear,
+          new Date(),
+          settings.birthdayDaysBefore,
+          settings.birthdayDaysAfter,
+        ),
+      )
+    : null
 
   return (
     <div className="max-w-3xl">
@@ -55,14 +60,11 @@ export function CustomerDetail() {
 
       <div className="mt-2 flex items-center gap-3">
         <h1 className="text-2xl font-bold">{customer.name}</h1>
-        {remind && (
-          <span className="rounded-full bg-pink-100 px-3 py-1 text-sm font-medium text-pink-700">
-            🎂 Birthday soon
-          </span>
-        )}
-        {inWindow && !remind && (
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-500">
-            🎂 Birthday discount used
+        {bdayBadge && (
+          <span
+            className={`rounded-full px-3 py-1 text-sm font-medium ${bdayBadge.className}`}
+          >
+            {bdayBadge.label}
           </span>
         )}
       </div>
@@ -179,7 +181,7 @@ function LoyaltyTransactions({ transactions }: { transactions: LoyaltyTransactio
 // gates on load and keys this by customer id so it re-initializes per customer.
 function ProfileForm({ customer }: { customer: Customer }) {
   const update = useUpdateCustomer()
-  const { data: program } = useLoyaltyProgram()
+  const { data: programs } = useActiveLoyaltyPrograms()
   const { data: settings } = useSettings()
   const redeem = useRedeemPoints()
   const claimBirthday = useClaimBirthday()
@@ -189,6 +191,8 @@ function ProfileForm({ customer }: { customer: Customer }) {
   const [saved, setSaved] = useState(false)
   const [redeemedMsg, setRedeemedMsg] = useState<string | null>(null)
   const [bdayClaimed, setBdayClaimed] = useState(false)
+  // Live balance for eligibility (updates after each redeem without a refetch).
+  const [balance, setBalance] = useState(customer.pointsBalance)
   const currentYear = new Date().getFullYear()
 
   // Birthday claim availability: in the window and not yet claimed this year.
@@ -219,18 +223,21 @@ function ProfileForm({ customer }: { customer: Customer }) {
     setSaved(true)
   }
 
-  const canRedeem =
-    program != null && customer.pointsBalance >= program.pointsPerReward
+  // Every active program the customer currently has enough points for.
+  const eligiblePrograms = (programs ?? []).filter(
+    (p) => balance >= p.pointsPerReward,
+  )
 
-  const onRedeem = async () => {
-    if (!program) return
+  const onRedeem = async (program: LoyaltyProgram) => {
     setRedeemedMsg(null)
     const result = await redeem.mutateAsync({
       customerId: customer.id,
       programId: program.id,
     })
+    setBalance(result.pointsBalance)
+    setPoints(String(result.pointsBalance))
     setRedeemedMsg(
-      `Redeemed ${result.redeemedPoints} points for ${formatReward(result.rewardType, result.rewardValue)}. New balance: ${result.pointsBalance}.`,
+      `Redeemed ${result.redeemedPoints} points from "${program.name}" for ${formatReward(result.rewardType, result.rewardValue)}. New balance: ${result.pointsBalance}.`,
     )
   }
 
@@ -281,24 +288,35 @@ function ProfileForm({ customer }: { customer: Customer }) {
         {update.error && <span className="text-sm text-red-600">{update.error.message}</span>}
       </div>
 
-      {/* Redeem reward (staff-applied). Enabled only at/over the threshold. */}
+      {/* Redeem rewards (staff-applied) — one button per eligible program. */}
       <div className="mt-6 border-t border-slate-100 pt-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onRedeem}
-            disabled={!canRedeem || redeem.isPending}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {redeem.isPending ? 'Redeeming…' : 'Redeem reward'}
-          </button>
-          <span className="text-sm text-slate-500">
-            {program
-              ? canRedeem
-                ? `Eligible: ${program.pointsPerReward} pts → ${formatReward(program.rewardType, program.rewardValue)}`
-                : `Needs ${program.pointsPerReward} pts (has ${customer.pointsBalance})`
-              : 'No active loyalty program'}
-          </span>
-        </div>
+        <h3 className="mb-3 text-sm font-semibold text-slate-600">
+          Redeemable rewards <span className="font-normal text-slate-400">({balance} pts)</span>
+        </h3>
+        {eligiblePrograms.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            {(programs ?? []).length === 0
+              ? 'No active loyalty program.'
+              : 'Not enough points for any reward yet.'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {eligiblePrograms.map((p) => (
+              <div key={p.id} className="flex items-center gap-3">
+                <button
+                  onClick={() => onRedeem(p)}
+                  disabled={redeem.isPending}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                >
+                  {redeem.isPending ? 'Redeeming…' : `Redeem ${p.name}`}
+                </button>
+                <span className="text-sm text-slate-500">
+                  {p.pointsPerReward} pts → {formatReward(p.rewardType, p.rewardValue)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
         {redeemedMsg && <p className="mt-2 text-sm text-emerald-600">{redeemedMsg}</p>}
         {redeem.error && <p className="mt-2 text-sm text-red-600">{redeem.error.message}</p>}
       </div>

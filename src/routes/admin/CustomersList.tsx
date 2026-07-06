@@ -3,7 +3,11 @@ import { Link } from 'react-router-dom'
 import { useCustomers, useLoyaltyProgram, useSettings } from '../../lib/queries'
 import { CSV_HEADERS, downloadCsv, toCsv } from '../../lib/csv'
 import { formatPhone } from '../../lib/phone'
-import { formatBirthday, isBirthdaySoon, shouldRemindBirthday } from '../../lib/birthday'
+import {
+  birthdayStatus,
+  birthdayStatusBadge,
+  formatBirthday,
+} from '../../lib/birthday'
 
 export function CustomersList() {
   const { data: customers, isLoading, error } = useCustomers()
@@ -17,22 +21,12 @@ export function CustomersList() {
   const threshold = program?.pointsPerReward ?? null
   const isEligible = (points: number) => threshold != null && points >= threshold
 
-  // Birthday status for a customer, using the configured window (default 7/7):
-  //   'soon'     -> in window, discount NOT yet claimed this year (reminder)
-  //   'redeemed' -> in window, already claimed this year
-  //   'none'     -> outside the window
+  // Birthday status for a customer, using the configured window (default 7/7).
   const today = new Date()
   const bdayBefore = settings?.birthdayDaysBefore ?? 7
   const bdayAfter = settings?.birthdayDaysAfter ?? 7
-  const birthdayStatus = (
-    b: string | null,
-    redeemedYear: number | null,
-  ): 'soon' | 'redeemed' | 'none' => {
-    if (!isBirthdaySoon(b, today, bdayBefore, bdayAfter)) return 'none'
-    return shouldRemindBirthday(b, redeemedYear, today, bdayBefore, bdayAfter)
-      ? 'soon'
-      : 'redeemed'
-  }
+  const bdayStatus = (b: string | null, redeemedYear: number | null) =>
+    birthdayStatus(b, redeemedYear, today, bdayBefore, bdayAfter)
 
   const filtered = useMemo(() => {
     let list = customers ?? []
@@ -123,13 +117,16 @@ export function CustomersList() {
             <tbody>
               {filtered.map((c) => {
                 const eligible = isEligible(c.pointsBalance)
-                const bday = birthdayStatus(c.birthday, c.birthdayRedeemedYear)
+                const bday = bdayStatus(c.birthday, c.birthdayRedeemedYear)
+                const badge = birthdayStatusBadge(bday)
+                // Highlight the row while an unclaimed birthday is in-window.
+                const bdayActive = bday !== 'none' && bday !== 'claimed'
                 return (
                   <tr
                     key={c.id}
                     className={
                       'border-b border-slate-100 last:border-0 ' +
-                      (bday === 'soon'
+                      (bdayActive
                         ? 'bg-pink-50 hover:bg-pink-100'
                         : eligible
                           ? 'bg-emerald-50 hover:bg-emerald-100'
@@ -144,14 +141,11 @@ export function CustomersList() {
                     <td className="px-4 py-3 text-slate-600">{formatPhone(c.phone)}</td>
                     <td className="px-4 py-3">
                       <span className="text-slate-600">{formatBirthday(c.birthday)}</span>
-                      {bday === 'soon' && (
-                        <span className="ml-2 rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">
-                          🎂 soon
-                        </span>
-                      )}
-                      {bday === 'redeemed' && (
-                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-                          ✓ redeemed
+                      {badge && (
+                        <span
+                          className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+                        >
+                          {badge.label}
                         </span>
                       )}
                     </td>

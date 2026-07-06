@@ -6,7 +6,7 @@ const emptyState: FlowState = {
   phone: '',
   name: '',
   birthday: null,
-  consent: false,
+  consent: true, // marketing consent opt-in checked by default
   customer: null,
   selectedServiceIds: [],
   technicianId: null,

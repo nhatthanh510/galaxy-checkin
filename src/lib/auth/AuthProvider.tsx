@@ -1,32 +1,32 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { getSupabase } from '../supabase'
-import { AuthContext, type AuthContextValue } from './authContext'
+import { AuthContext, type AuthContextValue, type UserRole } from './authContext'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [role, setRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Read the caller's own profile.is_admin. RLS lets a user read their own row.
-  // Never throws — on any error (missing table, network) we treat as not-admin
+  // Read the caller's own profile.role. RLS lets a user read their own row.
+  // Never throws — on any error (missing profile, network) we treat as no role
   // so the guard resolves instead of hanging.
-  const refreshIsAdmin = useCallback(async (uid: string | undefined) => {
+  const refreshRole = useCallback(async (uid: string | undefined) => {
     if (!uid) {
-      setIsAdmin(false)
+      setRole(null)
       return
     }
     try {
       const { data, error } = await getSupabase()
         .from('profile')
-        .select('is_admin')
+        .select('role')
         .eq('id', uid)
         .maybeSingle()
       if (error) console.error('[AuthProvider] profile lookup error:', error.message)
-      setIsAdmin(!error && Boolean(data?.is_admin))
+      setRole((data?.role as UserRole | undefined) ?? null)
     } catch (err) {
       console.error('[AuthProvider] profile lookup threw:', err)
-      setIsAdmin(false)
+      setRole(null)
     }
   }, [])
 
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(async ({ data }) => {
         if (!active) return
         setSession(data.session)
-        await refreshIsAdmin(data.session?.user.id)
+        await refreshRole(data.session?.user.id)
       })
       .catch((err) => console.error('[AuthProvider] getSession failed:', err))
       .finally(() => {
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return
       setSession(s)
       void Promise.resolve().then(() => {
-        if (active) void refreshIsAdmin(s?.user.id)
+        if (active) void refreshRole(s?.user.id)
       })
     })
 
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(safety)
       sub.subscription.unsubscribe()
     }
-  }, [refreshIsAdmin])
+  }, [refreshRole])
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await getSupabase().auth.signInWithPassword({ email, password })
@@ -88,8 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ session, isAdmin, loading, signIn, signOut }),
-    [session, isAdmin, loading, signIn, signOut],
+    () => ({ session, role, isAdmin: role === 'admin', loading, signIn, signOut }),
+    [session, role, loading, signIn, signOut],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

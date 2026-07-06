@@ -50,28 +50,31 @@ function dayOfYear(month: number, day: number): number {
   return cumulative[month - 1] + day
 }
 
+// Signed day distance from today to the birthday (ignoring year), or null if no
+// birthday. > 0 => upcoming; 0 => today; < 0 => just passed. Wraps at Dec/Jan.
+export function birthdayDayDiff(birthday: string | null, today: Date): number | null {
+  if (!birthday) return null
+  const parts = dateStringToParts(birthday)
+  if (parts.month == null || parts.day == null) return null
+
+  const YEAR = 365
+  const todayDoy = dayOfYear(today.getMonth() + 1, today.getDate())
+  const bdayDoy = dayOfYear(parts.month, parts.day)
+  let diff = bdayDoy - todayDoy
+  if (diff > YEAR / 2) diff -= YEAR
+  if (diff < -YEAR / 2) diff += YEAR
+  return diff
+}
+
 // Is `birthday` within [daysBefore, daysAfter] of `today` (ignoring year)?
-// Handles the wrap across Dec 31 / Jan 1. `birthday` is "YYYY-MM-DD" or null.
 export function isBirthdaySoon(
   birthday: string | null,
   today: Date,
   daysBefore: number,
   daysAfter: number,
 ): boolean {
-  if (!birthday) return false
-  const parts = dateStringToParts(birthday)
-  if (parts.month == null || parts.day == null) return false
-
-  const YEAR = 365
-  const todayDoy = dayOfYear(today.getMonth() + 1, today.getDate())
-  const bdayDoy = dayOfYear(parts.month, parts.day)
-
-  // Smallest circular distance (in days) between the two dates-of-year.
-  let diff = bdayDoy - todayDoy
-  if (diff > YEAR / 2) diff -= YEAR
-  if (diff < -YEAR / 2) diff += YEAR
-
-  // diff > 0 => birthday is upcoming; diff < 0 => it just passed.
+  const diff = birthdayDayDiff(birthday, today)
+  if (diff == null) return false
   return diff >= -daysAfter && diff <= daysBefore
 }
 
@@ -86,6 +89,46 @@ export function shouldRemindBirthday(
 ): boolean {
   if (!isBirthdaySoon(birthday, today, daysBefore, daysAfter)) return false
   return redeemedYear !== today.getFullYear()
+}
+
+export type BirthdayStatus = 'today' | 'upcoming' | 'recent' | 'claimed' | 'none'
+
+// A display-friendly birthday status for the admin:
+//   'today'    — it's the actual day (in window, unclaimed)
+//   'upcoming' — in window, birthday is still ahead (unclaimed)
+//   'recent'   — in window, birthday just passed (unclaimed)
+//   'claimed'  — in window but the discount was already used this year
+//   'none'     — outside the window / no birthday
+export function birthdayStatus(
+  birthday: string | null,
+  redeemedYear: number | null,
+  today: Date,
+  daysBefore: number,
+  daysAfter: number,
+): BirthdayStatus {
+  if (!isBirthdaySoon(birthday, today, daysBefore, daysAfter)) return 'none'
+  if (redeemedYear === today.getFullYear()) return 'claimed'
+  const diff = birthdayDayDiff(birthday, today)
+  if (diff === 0) return 'today'
+  return diff != null && diff > 0 ? 'upcoming' : 'recent'
+}
+
+// Label + tailwind color classes for a birthday status (admin badges).
+export function birthdayStatusBadge(
+  status: BirthdayStatus,
+): { label: string; className: string } | null {
+  switch (status) {
+    case 'today':
+      return { label: '🎂 Birthday today', className: 'bg-pink-100 text-pink-700' }
+    case 'upcoming':
+      return { label: '🎂 Birthday soon', className: 'bg-pink-100 text-pink-700' }
+    case 'recent':
+      return { label: '🎂 Recent birthday', className: 'bg-pink-100 text-pink-700' }
+    case 'claimed':
+      return { label: '✓ Claimed', className: 'bg-slate-100 text-slate-500' }
+    default:
+      return null
+  }
 }
 
 // Pretty birthday for display, e.g. "15 March 1990" or "15 March" (no year).

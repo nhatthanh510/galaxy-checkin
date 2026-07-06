@@ -5,27 +5,18 @@ import { LoyaltyCarousel } from '../../components/LoyaltyCarousel'
 import { ConsentCheckbox } from '../../components/ConsentCheckbox'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
-import { RedeemModal } from '../../components/RedeemModal'
-import {
-  useCustomerLookup,
-  useLoyaltyProgram,
-  useActiveLoyaltyPrograms,
-} from '../../lib/queries'
-import type { Customer } from '../../types'
+import { useCustomerLookup, useActiveLoyaltyPrograms } from '../../lib/queries'
 import { formatPhone, isComplete, isValidAuMobile, normalizePhone } from '../../lib/phone'
 import { useKioskFlow } from './useKioskFlow'
 
-// Step 1: phone entry (Australian mobiles). Known number -> greet + (maybe)
-// redeem, skip to services. Unknown -> capture the name next. An invalid AU
-// number warns but can be force-submitted ("Continue anyway").
+// Step 1: phone entry (Australian mobiles). Known number -> services (rewards are
+// shown in-context there, no interrupting popup). Unknown -> capture the name.
+// An invalid AU number warns but can be force-submitted ("Continue anyway").
 export function PhoneEntry() {
   const navigate = useNavigate()
   const flow = useKioskFlow()
-  const { data: program } = useLoyaltyProgram()
   const { data: activePrograms } = useActiveLoyaltyPrograms()
   const lookup = useCustomerLookup()
-  // A known customer at/over the reward threshold — triggers the redeem modal.
-  const [redeemFor, setRedeemFor] = useState<Customer | null>(null)
   // Set once the user has tried to submit an invalid number, so the button
   // switches to "Continue anyway" (force-process).
   const [forcePrompted, setForcePrompted] = useState(false)
@@ -42,21 +33,16 @@ export function PhoneEntry() {
     setForcePrompted(false)
     flow.setPhone(digits.slice(0, -1))
   }
+  const onClear = () => {
+    setForcePrompted(false)
+    flow.setPhone('')
+  }
 
   const proceed = async () => {
     const customer = await lookup.mutateAsync(digits)
     flow.setCustomer(customer)
-    if (!customer) {
-      navigate('/kiosk/name')
-      return
-    }
-    // Known customer at/over threshold -> prompt to redeem (with sound) before
-    // continuing. Otherwise skip straight to services.
-    if (program && customer.pointsBalance >= program.pointsPerReward) {
-      setRedeemFor(customer)
-    } else {
-      navigate('/kiosk/services')
-    }
+    // Known customer -> services (rewards shown inline there). Unknown -> name.
+    navigate(customer ? '/kiosk/services' : '/kiosk/name')
   }
 
   const onNext = async () => {
@@ -70,19 +56,9 @@ export function PhoneEntry() {
     }
   }
 
-  // After the redeem modal closes, persist the new balance (if redeemed) so the
-  // later steps don't show the stale pre-redeem total, then continue the flow.
-  const onRedeemClose = (result: { redeemed: boolean; newBalance?: number }) => {
-    if (result.redeemed && result.newBalance != null && redeemFor) {
-      flow.setCustomer({ ...redeemFor, pointsBalance: result.newBalance })
-    }
-    setRedeemFor(null)
-    navigate('/kiosk/services')
-  }
-
   return (
-    // This screen drives its own initial redeem prompt, so suppress the shared
-    // persistent banner here (it appears on the later steps instead).
+    // First step: no back arrow, and it drives its own rewards prompt so the
+    // shared header link/banner is suppressed here.
     <KioskLayout showStartOver={false} showPromotions={false}>
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-10 lg:grid-cols-2">
         {/* Left: loyalty program info card, always visible. */}
@@ -102,7 +78,7 @@ export function PhoneEntry() {
             )}
           </div>
 
-          <Keypad onDigit={onDigit} onDelete={onDelete} />
+          <Keypad onDigit={onDigit} onDelete={onDelete} onClear={onClear} />
 
           {/* Warn on an invalid AU mobile once the user has tried to continue. */}
           {complete && !valid && (
@@ -130,10 +106,6 @@ export function PhoneEntry() {
       <div className="mx-auto mt-8 w-full max-w-6xl">
         <ConsentCheckbox checked={flow.consent} onChange={flow.setConsent} />
       </div>
-
-      {redeemFor && program && (
-        <RedeemModal customer={redeemFor} program={program} onClose={onRedeemClose} />
-      )}
     </KioskLayout>
   )
 }

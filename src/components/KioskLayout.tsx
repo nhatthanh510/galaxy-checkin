@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useKioskFlow } from '../routes/kiosk/useKioskFlow'
+import { useAuth } from '../lib/auth/useAuth'
 import { PromotionsLink } from './PromotionsLink'
 
 interface KioskLayoutOptions {
@@ -16,7 +17,8 @@ interface KioskLayoutProps extends KioskLayoutOptions {
 }
 
 // Shared dark kiosk shell. Provides a persistent "Start over" path so no screen
-// is a dead end, and resets flow state on the way out.
+// is a dead end, and resets flow state on the way out. Steps render their own
+// back arrow (BackButton) next to their title.
 export function KioskLayout({
   children,
   showStartOver = true,
@@ -24,10 +26,16 @@ export function KioskLayout({
 }: KioskLayoutProps) {
   const navigate = useNavigate()
   const { reset } = useKioskFlow()
+  const { isAdmin, signOut } = useAuth()
 
   const startOver = () => {
     reset()
     navigate('/', { replace: true })
+  }
+
+  const onSignOut = async () => {
+    await signOut()
+    navigate('/login', { replace: true })
   }
 
   return (
@@ -38,7 +46,7 @@ export function KioskLayout({
         <div className="rounded-xl bg-white px-4 py-2">
           <img src="/logo.png" alt="Galaxy Nails" className="h-8 w-auto" />
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4">
           {/* Unified rewards link (only shows when any promo is eligible). */}
           {showPromotions && <PromotionsLink />}
           {showStartOver && (
@@ -50,6 +58,22 @@ export function KioskLayout({
               ↺ Start over
             </button>
           )}
+          {/* Staff/admin controls (this is a logged-in staff tablet). */}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="rounded-xl bg-white/5 px-4 py-3 text-base font-medium text-brand-200 hover:bg-white/10"
+            >
+              Admin
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="rounded-xl px-3 py-3 text-sm font-medium text-white/40 hover:text-white/70"
+          >
+            Sign out
+          </button>
         </div>
       </header>
       <main className="flex-1 flex flex-col px-8 pb-10">{children}</main>

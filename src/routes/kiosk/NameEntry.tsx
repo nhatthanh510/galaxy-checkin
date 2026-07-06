@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
+import { BackButton } from '../../components/BackButton'
 import { BirthdayDropdowns } from '../../components/BirthdayDropdowns'
 import {
   dateStringToParts,
@@ -36,9 +37,14 @@ export function NameEntry() {
   return (
     <KioskLayout>
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center">
-        <h1 className="text-center text-4xl font-black tracking-wide text-white">
-          ENTER NAME
-        </h1>
+        <div className="flex items-center gap-4">
+          <BackButton />
+          <h1 className="flex-1 text-center text-4xl font-black tracking-wide text-white">
+            ENTER NAME
+          </h1>
+          {/* Spacer to keep the title visually centered opposite the arrow. */}
+          <div className="h-12 w-12 shrink-0" aria-hidden />
+        </div>
         <p className="mt-3 text-center text-xl text-white/60">Please enter your full name</p>
 
         <input

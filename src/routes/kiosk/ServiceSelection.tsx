@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
 import { ServiceRow } from '../../components/ServiceRow'
+import { BackButton } from '../../components/BackButton'
+import { InlineRewards } from '../../components/InlineRewards'
 import { useServices, useServiceGroups } from '../../lib/queries'
 import type { Service, ServiceGroup } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
 
 // Step 3: service selection (optional — SKIP or NEXT). For a known customer this
-// is the first screen after phone entry, so we greet them; the unified
-// PromotionsLink (in the KioskLayout header) handles all reward actions.
+// is the first screen after phone entry, so we greet them and show any eligible
+// rewards in-context (redeem here — no interrupting popup).
 export function ServiceSelection() {
   const navigate = useNavigate()
   const flow = useKioskFlow()
@@ -40,14 +42,20 @@ export function ServiceSelection() {
               <span className="font-bold text-brand-300">{customer.pointsBalance}</span>{' '}
               {customer.pointsBalance === 1 ? 'point' : 'points'}.
             </p>
-            {/* Reward actions (redeem points, claim birthday) live in the
-                unified "rewards available" link in the header. */}
+            {/* Eligible rewards shown in-context — redeem/claim right here. */}
+            <InlineRewards
+              customer={customer}
+              onCustomerChange={(patch) => flow.setCustomer({ ...customer, ...patch })}
+            />
           </div>
         )}
 
-        <h1 className="text-3xl font-black tracking-wide text-white">
-          What services do you want to choose?
-        </h1>
+        <div className="flex items-center gap-4">
+          <BackButton />
+          <h1 className="text-3xl font-black tracking-wide text-white">
+            What services do you want to choose?
+          </h1>
+        </div>
 
         {isLoading && <p className="mt-8 text-white/50">Loading services…</p>}
         {noServices && (
@@ -60,7 +68,7 @@ export function ServiceSelection() {
           {grouped.map(({ groupName, items }) => (
             <div key={groupName}>
               <h2 className="mb-3 text-xl font-bold text-brand-300">{groupName}</h2>
-              <div className="space-y-3">
+              <div className="flex flex-wrap gap-3">
                 {items.map((svc) => (
                   <ServiceRow
                     key={svc.id}
@@ -74,11 +82,16 @@ export function ServiceSelection() {
           ))}
         </div>
 
+        {/* SKIP continues with no service; NEXT requires at least one selected. */}
         <div className="mt-10 flex gap-4">
           <NextButton variant="ghost" onClick={goNext} className="flex-1">
             SKIP
           </NextButton>
-          <NextButton onClick={goNext} className="flex-1">
+          <NextButton
+            onClick={goNext}
+            disabled={flow.selectedServiceIds.length === 0}
+            className="flex-1"
+          >
             NEXT
           </NextButton>
         </div>

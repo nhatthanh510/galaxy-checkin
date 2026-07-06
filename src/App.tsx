@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './lib/auth/AuthProvider'
+import { RequireAuth } from './components/RequireAuth'
 import { RequireAdmin } from './components/RequireAdmin'
 import { KioskFlowProvider } from './routes/kiosk/FlowContext'
 import { PhoneEntry } from './routes/kiosk/PhoneEntry'
@@ -8,7 +9,7 @@ import { NameEntry } from './routes/kiosk/NameEntry'
 import { ServiceSelection } from './routes/kiosk/ServiceSelection'
 import { TechnicianSelection } from './routes/kiosk/TechnicianSelection'
 import { Success } from './routes/kiosk/Success'
-import { Login } from './routes/admin/Login'
+import { Login } from './routes/Login'
 import { AdminLayout } from './routes/admin/AdminLayout'
 import { CustomersList } from './routes/admin/CustomersList'
 import { CustomerDetail } from './routes/admin/CustomerDetail'
@@ -29,12 +30,17 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            {/* Kiosk (customer-facing) flow — public, dark theme. */}
+            {/* Shared login — everyone must sign in. */}
+            <Route path="/login" element={<Login />} />
+
+            {/* Kiosk flow — any logged-in user (staff or admin). */}
             <Route
               element={
-                <KioskFlowProvider>
-                  <Outlet />
-                </KioskFlowProvider>
+                <RequireAuth>
+                  <KioskFlowProvider>
+                    <Outlet />
+                  </KioskFlowProvider>
+                </RequireAuth>
               }
             >
               <Route path="/" element={<PhoneEntry />} />
@@ -44,8 +50,7 @@ export default function App() {
               <Route path="/kiosk/success" element={<Success />} />
             </Route>
 
-            {/* Admin — login-gated. */}
-            <Route path="/admin/login" element={<Login />} />
+            {/* Admin — admins only. */}
             <Route
               path="/admin"
               element={

@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../lib/auth/useAuth'
 
 // Shared admin shell: light theme, sidebar nav, sign out. Renders child routes
@@ -9,7 +9,7 @@ export function AdminLayout() {
 
   const onSignOut = async () => {
     await signOut()
-    navigate('/admin/login', { replace: true })
+    navigate('/login', { replace: true })
   }
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -46,6 +46,12 @@ export function AdminLayout() {
           </NavLink>
         </nav>
         <div className="mt-auto border-t border-slate-200 pt-4">
+          <Link
+            to="/"
+            className="mb-2 block rounded-lg px-4 py-2 text-sm font-medium text-brand-700 hover:bg-slate-100"
+          >
+            ← Go to kiosk
+          </Link>
           <p className="truncate px-2 text-xs text-slate-400">{session?.user.email}</p>
           <button
             onClick={onSignOut}
