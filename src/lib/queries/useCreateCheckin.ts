@@ -20,6 +20,7 @@ export function useCreateCheckin() {
         p_service_ids: input.serviceIds,
         p_technician_id: input.technicianId,
         p_birthday: input.birthday,
+        p_consent: input.consent,
       })
       if (error) throw error
 
@@ -47,12 +48,11 @@ export function useCreateCheckin() {
         },
       }
 
-      // Fire the check-in confirmation. PLACEHOLDER — records intent only, no
-      // real SMS/email until Twilio/email is wired. Non-blocking / non-throwing.
+      // Fire the check-in confirmation SMS via ClickSend (non-blocking /
+      // non-throwing; degrades to a logged 'stubbed' record without creds).
       await queueNotification({
         customerId: row.customer_id,
         checkinId: row.checkin_id,
-        channel: 'sms',
         toAddress: input.phone,
         template: 'checkin_confirmation',
         payload: { name: row.customer_name },

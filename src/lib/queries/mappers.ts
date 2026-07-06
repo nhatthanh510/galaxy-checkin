@@ -57,7 +57,8 @@ export function mapLoyaltyProgram(row: LoyaltyProgramRow): LoyaltyProgram {
     name: row.name,
     description: row.description,
     pointsPerReward: row.points_per_reward,
-    rewardAmount: Number(row.reward_amount),
+    rewardType: row.reward_type ?? 'fixed',
+    rewardValue: Number(row.reward_value ?? row.reward_amount ?? 0),
     active: row.active,
   }
 }

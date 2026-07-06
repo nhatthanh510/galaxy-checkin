@@ -6,6 +6,7 @@ const emptyState: FlowState = {
   phone: '',
   name: '',
   birthday: null,
+  consent: false,
   customer: null,
   selectedServiceIds: [],
   technicianId: null,
@@ -18,6 +19,10 @@ export function KioskFlowProvider({ children }: { children: ReactNode }) {
   const setName = useCallback((name: string) => setState((s) => ({ ...s, name })), [])
   const setBirthday = useCallback(
     (birthday: string | null) => setState((s) => ({ ...s, birthday })),
+    [],
+  )
+  const setConsent = useCallback(
+    (consent: boolean) => setState((s) => ({ ...s, consent })),
     [],
   )
   const setCustomer = useCallback(
@@ -46,12 +51,13 @@ export function KioskFlowProvider({ children }: { children: ReactNode }) {
       setPhone,
       setName,
       setBirthday,
+      setConsent,
       setCustomer,
       toggleService,
       setTechnician,
       reset,
     }),
-    [state, setPhone, setName, setBirthday, setCustomer, toggleService, setTechnician, reset],
+    [state, setPhone, setName, setBirthday, setConsent, setCustomer, toggleService, setTechnician, reset],
   )
 
   return <FlowContext.Provider value={value}>{children}</FlowContext.Provider>

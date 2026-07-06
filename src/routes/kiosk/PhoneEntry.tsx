@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Keypad } from '../../components/Keypad'
-import { LoyaltyCard } from '../../components/LoyaltyCard'
+import { LoyaltyCarousel } from '../../components/LoyaltyCarousel'
 import { ConsentCheckbox } from '../../components/ConsentCheckbox'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
 import { RedeemModal } from '../../components/RedeemModal'
-import { useCustomerLookup, useLoyaltyProgram } from '../../lib/queries'
+import {
+  useCustomerLookup,
+  useLoyaltyProgram,
+  useActiveLoyaltyPrograms,
+} from '../../lib/queries'
 import type { Customer } from '../../types'
 import { formatPhone, isComplete, isValidAuMobile, normalizePhone } from '../../lib/phone'
 import { useKioskFlow } from './useKioskFlow'
@@ -18,8 +22,8 @@ export function PhoneEntry() {
   const navigate = useNavigate()
   const flow = useKioskFlow()
   const { data: program } = useLoyaltyProgram()
+  const { data: activePrograms } = useActiveLoyaltyPrograms()
   const lookup = useCustomerLookup()
-  const [consent, setConsent] = useState(false)
   // A known customer at/over the reward threshold — triggers the redeem modal.
   const [redeemFor, setRedeemFor] = useState<Customer | null>(null)
   // Set once the user has tried to submit an invalid number, so the button
@@ -66,8 +70,12 @@ export function PhoneEntry() {
     }
   }
 
-  // After the redeem modal closes (redeemed or not), continue the flow.
-  const onRedeemClose = () => {
+  // After the redeem modal closes, persist the new balance (if redeemed) so the
+  // later steps don't show the stale pre-redeem total, then continue the flow.
+  const onRedeemClose = (result: { redeemed: boolean; newBalance?: number }) => {
+    if (result.redeemed && result.newBalance != null && redeemFor) {
+      flow.setCustomer({ ...redeemFor, pointsBalance: result.newBalance })
+    }
     setRedeemFor(null)
     navigate('/kiosk/services')
   }
@@ -79,7 +87,7 @@ export function PhoneEntry() {
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-10 lg:grid-cols-2">
         {/* Left: loyalty program info card, always visible. */}
         <div className="order-2 lg:order-1">
-          {program && <LoyaltyCard program={program} />}
+          <LoyaltyCarousel programs={activePrograms ?? []} />
         </div>
 
         {/* Right: keypad + entry. */}
@@ -120,7 +128,7 @@ export function PhoneEntry() {
       </div>
 
       <div className="mx-auto mt-8 w-full max-w-6xl">
-        <ConsentCheckbox checked={consent} onChange={setConsent} />
+        <ConsentCheckbox checked={flow.consent} onChange={flow.setConsent} />
       </div>
 
       {redeemFor && program && (

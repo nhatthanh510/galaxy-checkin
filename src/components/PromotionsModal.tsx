@@ -1,9 +1,12 @@
-import type { Customer, LoyaltyProgram } from '../types'
+import type { Customer } from '../types'
 import { useRedeemPoints, useClaimBirthday } from '../lib/queries'
 
-// One eligible promotion the customer can act on right now.
+// One eligible promotion the customer can act on right now. Multiple 'points'
+// promos can coexist (one per active loyalty program), so each has a unique id.
 export interface Promotion {
-  key: 'points' | 'birthday'
+  id: string
+  kind: 'points' | 'birthday'
+  programId?: string // set for 'points' promos — which program to redeem
   title: string
   detail: string
   actionLabel: string
@@ -11,19 +14,16 @@ export interface Promotion {
 
 interface PromotionsModalProps {
   customer: Customer
-  program: LoyaltyProgram | null
   promotions: Promotion[]
   // Update the flow customer after an action so eligibility recomputes.
   onCustomerChange: (patch: Partial<Customer>) => void
   onClose: () => void
 }
 
-// Lists every promo the customer is eligible for (points redeem, birthday
-// discount, …) with a per-promo action. Unifies the previously-separate points
-// banner and birthday reminder into one place.
+// Lists every promo the customer is eligible for — one per active loyalty
+// program they can redeem, plus a birthday discount — each with its own action.
 export function PromotionsModal({
   customer,
-  program,
   promotions,
   onCustomerChange,
   onClose,
@@ -32,14 +32,17 @@ export function PromotionsModal({
   const claim = useClaimBirthday()
   const currentYear = new Date().getFullYear()
 
-  const onRedeemPoints = async () => {
-    const result = await redeem.mutateAsync(customer.id)
-    onCustomerChange({ pointsBalance: result.pointsBalance })
-  }
-
-  const onClaimBirthday = async () => {
-    await claim.mutateAsync(customer.id)
-    onCustomerChange({ birthdayRedeemedYear: currentYear })
+  const onAct = async (promo: Promotion) => {
+    if (promo.kind === 'points') {
+      const result = await redeem.mutateAsync({
+        customerId: customer.id,
+        programId: promo.programId ?? null,
+      })
+      onCustomerChange({ pointsBalance: result.pointsBalance })
+    } else {
+      await claim.mutateAsync(customer.id)
+      onCustomerChange({ birthdayRedeemedYear: currentYear })
+    }
   }
 
   const busy = redeem.isPending || claim.isPending
@@ -66,7 +69,7 @@ export function PromotionsModal({
           <ul className="space-y-3">
             {promotions.map((promo) => (
               <li
-                key={promo.key}
+                key={promo.id}
                 className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-5 py-4"
               >
                 <div>
@@ -74,8 +77,8 @@ export function PromotionsModal({
                   <p className="text-sm text-white/60">{promo.detail}</p>
                 </div>
                 <button
-                  onClick={promo.key === 'points' ? onRedeemPoints : onClaimBirthday}
-                  disabled={busy || (promo.key === 'points' && program == null)}
+                  onClick={() => onAct(promo)}
+                  disabled={busy}
                   className="shrink-0 rounded-xl bg-brand-500 px-5 py-3 text-base font-bold text-white hover:bg-brand-400 disabled:opacity-50"
                 >
                   {busy ? '…' : promo.actionLabel}

@@ -8,8 +8,11 @@ import {
   useClaimBirthday,
   useSettings,
 } from '../../lib/queries'
-import type { CheckinHistoryItem, Customer } from '../../types'
+import type { CheckinHistoryItem, Customer, LoyaltyTransaction } from '../../types'
 import { formatPhone } from '../../lib/phone'
+import { formatReward } from '../../lib/reward'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../components/usePagination'
 import {
   BirthdayDropdowns,
 } from '../../components/BirthdayDropdowns'
@@ -68,53 +71,106 @@ export function CustomerDetail() {
       {/* Editable fields — keyed by id so the form re-seeds per customer. */}
       <ProfileForm key={customer.id} customer={customer} />
 
-      {/* Visit history — table to avoid long scrolling. */}
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white">
-        <h2 className="border-b border-slate-100 p-4 text-lg font-semibold">
-          Visit history ({checkins.length})
-        </h2>
-        {checkins.length === 0 ? (
-          <p className="p-4 text-sm text-slate-400">No visits yet.</p>
-        ) : (
-          <div className="max-h-96 overflow-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-slate-500">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Date</th>
-                  <th className="px-4 py-2 font-medium">Services</th>
-                  <th className="px-4 py-2 font-medium">Preferred staff</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {checkins.map((c) => (
-                  <VisitRow key={c.id} visit={c} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <VisitHistory checkins={checkins} />
+      <LoyaltyTransactions transactions={transactions} />
+    </div>
+  )
+}
 
-      {/* Loyalty transactions */}
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
-        <h2 className="mb-4 text-lg font-semibold">Loyalty transactions ({transactions.length})</h2>
-        {transactions.length === 0 ? (
-          <p className="text-sm text-slate-400">No transactions yet.</p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {transactions.map((t) => (
-              <li key={t.id} className="flex justify-between border-b border-slate-100 pb-2 last:border-0">
-                <span className="text-slate-600">{t.reason}</span>
-                <span className={t.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}>
-                  {t.amount >= 0 ? '+' : ''}
-                  {t.amount}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+// Paginated visit-history table.
+function VisitHistory({ checkins }: { checkins: CheckinHistoryItem[] }) {
+  const { page, pageCount, pageItems, setPage, canPrev, canNext } = usePagination(checkins, 10)
+
+  return (
+    <div className="mt-6 rounded-xl border border-slate-200 bg-white">
+      <h2 className="border-b border-slate-100 p-4 text-lg font-semibold">
+        Visit history ({checkins.length})
+      </h2>
+      {checkins.length === 0 ? (
+        <p className="p-4 text-sm text-slate-400">No visits yet.</p>
+      ) : (
+        <>
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2 font-medium">Services</th>
+                <th className="px-4 py-2 font-medium">Preferred staff</th>
+                <th className="px-4 py-2 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map((c) => (
+                <VisitRow key={c.id} visit={c} />
+              ))}
+            </tbody>
+          </table>
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            canPrev={canPrev}
+            canNext={canNext}
+            onPage={setPage}
+          />
+        </>
+      )}
+    </div>
+  )
+}
+
+// Paginated loyalty-transactions table.
+function LoyaltyTransactions({ transactions }: { transactions: LoyaltyTransaction[] }) {
+  const { page, pageCount, pageItems, setPage, canPrev, canNext } = usePagination(
+    transactions,
+    10,
+  )
+
+  return (
+    <div className="mt-6 rounded-xl border border-slate-200 bg-white">
+      <h2 className="border-b border-slate-100 p-4 text-lg font-semibold">
+        Loyalty transactions ({transactions.length})
+      </h2>
+      {transactions.length === 0 ? (
+        <p className="p-4 text-sm text-slate-400">No transactions yet.</p>
+      ) : (
+        <>
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2 font-medium">Reason</th>
+                <th className="px-4 py-2 font-medium text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map((t) => (
+                <tr key={t.id} className="border-b border-slate-100 last:border-0">
+                  <td className="px-4 py-2 text-slate-600">
+                    {new Date(t.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-2 text-slate-600">{t.reason}</td>
+                  <td
+                    className={
+                      'px-4 py-2 text-right font-medium ' +
+                      (t.amount >= 0 ? 'text-emerald-600' : 'text-red-600')
+                    }
+                  >
+                    {t.amount >= 0 ? '+' : ''}
+                    {t.amount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Pagination
+            page={page}
+            pageCount={pageCount}
+            canPrev={canPrev}
+            canNext={canNext}
+            onPage={setPage}
+          />
+        </>
+      )}
     </div>
   )
 }
@@ -169,9 +225,12 @@ function ProfileForm({ customer }: { customer: Customer }) {
   const onRedeem = async () => {
     if (!program) return
     setRedeemedMsg(null)
-    const result = await redeem.mutateAsync(customer.id)
+    const result = await redeem.mutateAsync({
+      customerId: customer.id,
+      programId: program.id,
+    })
     setRedeemedMsg(
-      `Redeemed ${result.redeemedPoints} points for $${result.rewardAmount} off. New balance: ${result.pointsBalance}.`,
+      `Redeemed ${result.redeemedPoints} points for ${formatReward(result.rewardType, result.rewardValue)}. New balance: ${result.pointsBalance}.`,
     )
   }
 
@@ -235,7 +294,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
           <span className="text-sm text-slate-500">
             {program
               ? canRedeem
-                ? `Eligible: ${program.pointsPerReward} pts → $${program.rewardAmount} off`
+                ? `Eligible: ${program.pointsPerReward} pts → ${formatReward(program.rewardType, program.rewardValue)}`
                 : `Needs ${program.pointsPerReward} pts (has ${customer.pointsBalance})`
               : 'No active loyalty program'}
           </span>

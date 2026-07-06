@@ -6,7 +6,8 @@ import {
   useDeleteLoyaltyProgram,
   type LoyaltyProgramInput,
 } from '../../lib/queries'
-import type { LoyaltyProgram } from '../../types'
+import type { LoyaltyProgram, RewardType } from '../../types'
+import { formatReward } from '../../lib/reward'
 
 type Mode =
   | { kind: 'list' }
@@ -109,7 +110,7 @@ function ProgramRow({
         <div className="text-xs text-slate-400">{program.description}</div>
       </td>
       <td className="px-4 py-3 text-slate-600">
-        {program.pointsPerReward} pts → ${program.rewardAmount} off
+        {program.pointsPerReward} pts → {formatReward(program.rewardType, program.rewardValue)}
       </td>
       <td className="px-4 py-3">
         {program.active ? (
@@ -151,7 +152,10 @@ function ProgramView({ program, onBack }: { program: LoyaltyProgram; onBack: () 
       <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-white p-6 text-sm">
         <Field label="Description" value={program.description} />
         <Field label="Points per reward" value={String(program.pointsPerReward)} />
-        <Field label="Reward amount" value={`$${program.rewardAmount}`} />
+        <Field
+          label="Reward"
+          value={formatReward(program.rewardType, program.rewardValue)}
+        />
         <Field label="Status" value={program.active ? 'Active' : 'Inactive'} />
       </div>
     </div>
@@ -182,7 +186,8 @@ function ProgramForm({
   const [name, setName] = useState(program?.name ?? '')
   const [description, setDescription] = useState(program?.description ?? '')
   const [pointsPerReward, setPointsPerReward] = useState(String(program?.pointsPerReward ?? 10))
-  const [rewardAmount, setRewardAmount] = useState(String(program?.rewardAmount ?? 10))
+  const [rewardType, setRewardType] = useState<RewardType>(program?.rewardType ?? 'fixed')
+  const [rewardValue, setRewardValue] = useState(String(program?.rewardValue ?? 10))
   const [active, setActive] = useState(program?.active ?? true)
 
   const pending = create.isPending || update.isPending
@@ -193,7 +198,8 @@ function ProgramForm({
       name: name.trim(),
       description: description.trim(),
       pointsPerReward: Number(pointsPerReward) || 0,
-      rewardAmount: Number(rewardAmount) || 0,
+      rewardType,
+      rewardValue: Number(rewardValue) || 0,
       active,
     }
     if (isEdit && program) {
@@ -241,15 +247,28 @@ function ProgramForm({
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-slate-600">Reward amount ($)</span>
-            <input
-              type="number"
-              value={rewardAmount}
-              onChange={(e) => setRewardAmount(e.target.value)}
+            <span className="text-sm font-medium text-slate-600">Reward type</span>
+            <select
+              value={rewardType}
+              onChange={(e) => setRewardType(e.target.value as RewardType)}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-            />
+            >
+              <option value="fixed">Fixed amount ($)</option>
+              <option value="percent">Percentage (%)</option>
+            </select>
           </label>
         </div>
+        <label className="block">
+          <span className="text-sm font-medium text-slate-600">
+            {rewardType === 'percent' ? 'Reward percentage (%)' : 'Reward amount ($)'}
+          </span>
+          <input
+            type="number"
+            value={rewardValue}
+            onChange={(e) => setRewardValue(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+          />
+        </label>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"

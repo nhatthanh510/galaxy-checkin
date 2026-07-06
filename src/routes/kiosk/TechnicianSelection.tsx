@@ -29,6 +29,11 @@ export function TechnicianSelection() {
         </p>
 
         {isLoading && <p className="mt-8 text-white/50">Loading staff…</p>}
+        {!isLoading && (technicians ?? []).length === 0 && (
+          <p className="mt-8 text-white/50">
+            No preferred staff available right now — tap NEXT to continue.
+          </p>
+        )}
 
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           {(technicians ?? []).map((tech) => (

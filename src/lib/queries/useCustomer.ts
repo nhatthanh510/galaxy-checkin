@@ -81,21 +81,19 @@ export interface UpdateCustomerInput {
   birthday: string | null
 }
 
-// Admin: update a customer's editable fields.
+// Admin: update a customer's editable fields via the admin_update_customer RPC,
+// which writes a loyalty_transaction adjustment when points change (so the
+// balance and the ledger stay consistent).
 export function useUpdateCustomer() {
   const qc = useQueryClient()
   return useMutation<Customer, Error, UpdateCustomerInput>({
     mutationFn: async (input) => {
-      const { data, error } = await getSupabase()
-        .from('customer')
-        .update({
-          name: input.name,
-          points_balance: input.pointsBalance,
-          birthday: input.birthday,
-        })
-        .eq('id', input.id)
-        .select('*')
-        .single()
+      const { data, error } = await getSupabase().rpc('admin_update_customer', {
+        p_customer_id: input.id,
+        p_name: input.name,
+        p_points_balance: input.pointsBalance,
+        p_birthday: input.birthday,
+      })
       if (error) throw error
       return mapCustomer(data as CustomerRow)
     },

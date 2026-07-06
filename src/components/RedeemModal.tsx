@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Customer, LoyaltyProgram } from '../types'
 import { useRedeemPoints } from '../lib/queries'
 import { playChime } from '../lib/sound'
+import { formatReward } from '../lib/reward'
 
 export interface RedeemCloseResult {
   redeemed: boolean
@@ -28,7 +29,10 @@ export function RedeemModal({ customer, program, onClose }: RedeemModalProps) {
 
   const onRedeem = async () => {
     try {
-      const result = await redeem.mutateAsync(customer.id)
+      const result = await redeem.mutateAsync({
+        customerId: customer.id,
+        programId: program.id,
+      })
       setDone(true)
       // Brief confirmation, then close, reporting the new balance.
       setTimeout(() => onClose({ redeemed: true, newBalance: result.pointsBalance }), 1600)
@@ -47,7 +51,7 @@ export function RedeemModal({ customer, program, onClose }: RedeemModalProps) {
             </div>
             <h2 className="mt-6 text-3xl font-black">Reward redeemed!</h2>
             <p className="mt-2 text-lg text-white/80">
-              ${program.rewardAmount} off — enjoy your visit.
+              {formatReward(program.rewardType, program.rewardValue)} — enjoy your visit.
             </p>
           </>
         ) : (
@@ -57,8 +61,8 @@ export function RedeemModal({ customer, program, onClose }: RedeemModalProps) {
             </div>
             <h2 className="mt-6 text-3xl font-black">You have {customer.pointsBalance} points!</h2>
             <p className="mt-3 text-xl text-white/85">
-              Redeem {program.pointsPerReward} points for ${program.rewardAmount} off your
-              service?
+              Redeem {program.pointsPerReward} points for{' '}
+              {formatReward(program.rewardType, program.rewardValue)} your service?
             </p>
 
             {redeem.error && (

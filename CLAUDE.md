@@ -106,8 +106,16 @@ new), and fire the confirmation SMS.
   `supabase/migrations/`. Do not edit tables only in the dashboard.
 - **Row Level Security is required** on every table before it ships. Kiosk uses a
   limited anon/public path; staff routes require an authenticated session.
-- **Secrets** (Twilio keys, service-role key) live only in Edge Function env vars and
-  `.env` (gitignored) — never in client code or committed files.
+  - **Intentional exception — anon self-serve RPCs are unauthenticated.** The kiosk
+    `redeem_points(customer_id, program_id)` and `claim_birthday(customer_id)` RPCs are
+    `SECURITY DEFINER`, granted to `anon`, and take only a customer id — no phone/session
+    check (see `0012_drop_phone_check.sql`). This means anyone with the public anon key can
+    redeem/claim for any customer by UUID. It's an **accepted product tradeoff** (low blast
+    radius: lost loyalty points, not money or data) chosen for kiosk simplicity — do NOT
+    "fix" it as a security bug. To lock it down later, re-add a phone/ownership check
+    (the `0011` migration is the template) or move redemption behind an authenticated path.
+- **Secrets** (ClickSend username/API key, service-role key) live only in Edge Function
+  env vars and `.env` (gitignored) — never in client code or committed files.
 - **Data access** goes through hooks in `src/lib/queries/`, not inline Supabase calls
   in components.
 - Prefer small, focused components; keep the kiosk flow’s steps as separate route
@@ -141,13 +149,18 @@ transitive dev dep declares an overly narrow Node range; installs work with plai
     `RequireAdmin` gate the admin routes.
   - **Admin**: customers list/detail, CSV import (preview + dedupe by phone) / export,
     and a Loyalty settings page (the kiosk's left-side card is now configurable).
-  - **Notifications (SMS/email)**: PLACEHOLDER. `queueNotification` (`src/lib/notifications.ts`)
-    records intent via the `queue_notification` RPC (status `stubbed`);
-    `supabase/functions/send-notification` is a Supabase **Edge Function** (Deno) that is
-    where real Twilio/email delivery goes (`TODO(twilio/email)`). Deploy with
-    `supabase functions deploy send-notification`. The app does not call it yet.
-  - **Not yet built**: staff live queue / status transitions, awarding points on
-    `completed`, real message delivery.
+  - **Notifications (SMS only, no email)**: real delivery via **ClickSend**.
+    `queueNotification` (`src/lib/notifications.ts`) invokes the
+    `supabase/functions/send-notification` Edge Function (Deno), which sends via the
+    ClickSend REST API and records the result (`sent`/`failed`, or `stubbed` if creds are
+    absent) in the `notification` table. To go live: `supabase functions deploy
+    send-notification` and `supabase secrets set CLICKSEND_USERNAME=... CLICKSEND_API_KEY=...`.
+    The check-in confirmation already fires through it.
+  - **Loyalty**: multiple active programs supported (kiosk carousel + one redeemable promo
+    each); rewards are **fixed `$` or `percent` off** (`reward_type`/`reward_value`, see
+    `formatReward` in `src/lib/reward.ts`). Points are awarded +1 per check-in.
+  - **Not yet built**: staff live queue / status transitions, and awarding points on
+    `completed` (points are currently granted at check-in, not completion).
 - The directory layout above still holds, now with `src/routes/admin/` and `src/lib/auth/`.
 - When adding a feature that touches data, add/adjust the migration AND the RLS policy
   in the same change.

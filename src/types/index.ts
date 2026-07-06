@@ -46,12 +46,15 @@ export interface Checkin {
   createdAt: string // ISO timestamp
 }
 
+export type RewardType = 'fixed' | 'percent'
+
 export interface LoyaltyProgram {
   id: string
   name: string // e.g. "10 Point"
   description: string // e.g. "10 points get $10 off"
   pointsPerReward: number // redemption threshold, e.g. 10
-  rewardAmount: number // dollars off when redeemed, e.g. 10
+  rewardType: RewardType // 'fixed' = $ off, 'percent' = % off
+  rewardValue: number // dollars (fixed) or percent (percent)
   active: boolean
 }
 
@@ -73,6 +76,7 @@ export interface CreateCheckinInput {
   serviceIds: string[]
   technicianId: string | null
   birthday: string | null // "YYYY-MM-DD" or null
+  consent: boolean // marketing-contact consent (not required to check in)
 }
 
 // App-wide configurable settings (single row).
@@ -144,7 +148,9 @@ export interface LoyaltyProgramRow {
   name: string
   description: string
   points_per_reward: number
-  reward_amount: number
+  reward_type: RewardType
+  reward_value: number
+  reward_amount?: number // legacy column, kept in sync
   active: boolean
 }
 

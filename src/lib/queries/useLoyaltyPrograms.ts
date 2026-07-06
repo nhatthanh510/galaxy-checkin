@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { LoyaltyProgram, LoyaltyProgramRow } from '../../types'
+import type { LoyaltyProgram, LoyaltyProgramRow, RewardType } from '../../types'
 import { getSupabase } from '../supabase'
 import { mapLoyaltyProgram } from './mappers'
-import { loyaltyProgramKey } from './useLoyaltyProgram'
+import { activeLoyaltyProgramsKey, loyaltyProgramKey } from './useLoyaltyProgram'
 
 export const loyaltyProgramsKey = ['loyalty-programs'] as const
 
@@ -25,7 +25,8 @@ export interface LoyaltyProgramInput {
   name: string
   description: string
   pointsPerReward: number
-  rewardAmount: number
+  rewardType: RewardType
+  rewardValue: number
   active: boolean
 }
 
@@ -34,17 +35,22 @@ function toRow(input: LoyaltyProgramInput) {
     name: input.name,
     description: input.description,
     points_per_reward: input.pointsPerReward,
-    reward_amount: input.rewardAmount,
+    reward_type: input.rewardType,
+    reward_value: input.rewardValue,
+    // Keep the legacy $ column in sync for fixed rewards (0 for percent).
+    reward_amount: input.rewardType === 'fixed' ? input.rewardValue : 0,
     active: input.active,
   }
 }
 
-// Invalidate both the admin list and the kiosk's single-active query.
+// Invalidate the admin list AND both kiosk reads (single-active + all-active
+// carousel) so edits appear on the kiosk immediately.
 function useInvalidateLoyalty() {
   const qc = useQueryClient()
   return () => {
     qc.invalidateQueries({ queryKey: loyaltyProgramsKey })
     qc.invalidateQueries({ queryKey: loyaltyProgramKey })
+    qc.invalidateQueries({ queryKey: activeLoyaltyProgramsKey })
   }
 }
 

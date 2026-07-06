@@ -1,11 +1,16 @@
 // Kiosk (customer-facing) hooks.
 export { useServices } from './useServices'
 export { useTechnicians } from './useTechnicians'
-export { useLoyaltyProgram, loyaltyProgramKey } from './useLoyaltyProgram'
+export {
+  useLoyaltyProgram,
+  useActiveLoyaltyPrograms,
+  loyaltyProgramKey,
+  activeLoyaltyProgramsKey,
+} from './useLoyaltyProgram'
 export { useCustomerLookup } from './useCustomerLookup'
 export { useCreateCheckin } from './useCreateCheckin'
 export { useRedeemPoints } from './useRedeemPoints'
-export type { RedeemResult } from './useRedeemPoints'
+export type { RedeemResult, RedeemInput } from './useRedeemPoints'
 
 // Admin hooks.
 export { useCustomers, customersKey } from './useCustomers'
