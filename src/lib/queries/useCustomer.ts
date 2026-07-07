@@ -22,12 +22,11 @@ interface CheckinJoinRow {
   id: string
   status: CheckinStatus
   created_at: string
-  technician: { name: string } | null
   checkin_service: { service: { name: string } | null }[]
 }
 
-// Admin: fetch a customer with their visit history (services + staff resolved)
-// and loyalty transactions.
+// Admin: fetch a customer with their visit history (services resolved) and
+// loyalty transactions.
 export function useCustomer(id: string | undefined) {
   return useQuery<CustomerDetail>({
     queryKey: ['customer', id],
@@ -37,11 +36,11 @@ export function useCustomer(id: string | undefined) {
       const [{ data: cust, error: e1 }, { data: chk, error: e2 }, { data: tx, error: e3 }] =
         await Promise.all([
           supabase.from('customer').select('*').eq('id', id).single(),
-          // Join technician name + service names via the checkin_service link.
+          // Join service names via the checkin_service link.
           supabase
             .from('checkin')
             .select(
-              'id, status, created_at, technician:technician_id(name), checkin_service(service:service_id(name))',
+              'id, status, created_at, checkin_service(service:service_id(name))',
             )
             .eq('customer_id', id)
             .order('created_at', { ascending: false }),
@@ -59,7 +58,6 @@ export function useCustomer(id: string | undefined) {
         id: r.id,
         status: r.status,
         createdAt: r.created_at,
-        technicianName: r.technician?.name ?? null,
         serviceNames: (r.checkin_service ?? [])
           .map((cs) => cs.service?.name)
           .filter((n): n is string => Boolean(n)),

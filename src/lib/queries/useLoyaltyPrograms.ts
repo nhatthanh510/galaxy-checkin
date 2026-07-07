@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { LoyaltyProgram, LoyaltyProgramRow, RewardType } from '../../types'
+import type {
+  LoyaltyProgram,
+  LoyaltyProgramRow,
+  PromotionDateAnchor,
+  PromotionTrigger,
+  RewardType,
+} from '../../types'
 import { getSupabase } from '../supabase'
 import { mapLoyaltyProgram } from './mappers'
 import { activeLoyaltyProgramsKey, loyaltyProgramKey } from './useLoyaltyProgram'
@@ -24,6 +30,10 @@ export function useLoyaltyPrograms() {
 export interface LoyaltyProgramInput {
   name: string
   description: string
+  triggerType: PromotionTrigger
+  dateAnchor: PromotionDateAnchor | null
+  windowBeforeDays: number
+  windowAfterDays: number
   pointsPerReward: number
   rewardType: RewardType
   rewardValue: number
@@ -31,10 +41,18 @@ export interface LoyaltyProgramInput {
 }
 
 function toRow(input: LoyaltyProgramInput) {
+  const isPoints = input.triggerType === 'points'
+  const isDateWindow = input.triggerType === 'date_window'
   return {
     name: input.name,
     description: input.description,
-    points_per_reward: input.pointsPerReward,
+    trigger_type: input.triggerType,
+    // Anchor only applies to date-window triggers.
+    date_anchor: isDateWindow ? (input.dateAnchor ?? 'birthday') : null,
+    window_before_days: input.windowBeforeDays,
+    window_after_days: input.windowAfterDays,
+    // Only points triggers spend points.
+    points_per_reward: isPoints ? input.pointsPerReward : 0,
     reward_type: input.rewardType,
     reward_value: input.rewardValue,
     // Keep the legacy $ column in sync for fixed rewards (0 for percent).

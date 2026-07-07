@@ -1,24 +1,17 @@
-import {
-  dayOptions,
-  monthOptions,
-  yearOptions,
-  type BirthdayParts,
-} from '../lib/birthday'
+import { dayOptions, monthOptions, type BirthdayParts } from '../lib/birthday'
 
 interface BirthdayDropdownsProps {
   value: BirthdayParts
   onChange: (parts: BirthdayParts) => void
-  currentYear: number
   // 'dark' for the kiosk, 'light' for the admin.
   variant?: 'dark' | 'light'
 }
 
-// Three dropdowns (Day / Month / Year) for entering a birthday. All-or-nothing:
-// the parent decides validity (partsToDateString returns null unless all set).
+// Two dropdowns (Day / Month) for entering a birthday — day + month only, no
+// year. All-or-nothing: partsToDateString returns null unless both are set.
 export function BirthdayDropdowns({
   value,
   onChange,
-  currentYear,
   variant = 'dark',
 }: BirthdayDropdownsProps) {
   const selectClass =
@@ -29,7 +22,7 @@ export function BirthdayDropdowns({
   const num = (s: string): number | null => (s === '' ? null : Number(s))
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3">
       <select
         value={value.day ?? ''}
         onChange={(e) => onChange({ ...value, day: num(e.target.value) })}
@@ -52,19 +45,6 @@ export function BirthdayDropdowns({
         {monthOptions().map((m) => (
           <option key={m.value} value={m.value}>
             {m.label}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={value.year ?? ''}
-        onChange={(e) => onChange({ ...value, year: num(e.target.value) })}
-        className={selectClass}
-      >
-        <option value="">Year</option>
-        {yearOptions(currentYear).map((y) => (
-          <option key={y} value={y}>
-            {y}
           </option>
         ))}
       </select>

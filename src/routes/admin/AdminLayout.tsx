@@ -35,9 +35,6 @@ export function AdminLayout() {
           <NavLink to="/admin/groups" className={linkClass}>
             Groups
           </NavLink>
-          <NavLink to="/admin/staff" className={linkClass}>
-            Preferred staff
-          </NavLink>
           <NavLink to="/admin/loyalty" className={linkClass}>
             Loyalty settings
           </NavLink>

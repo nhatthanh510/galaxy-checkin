@@ -28,31 +28,37 @@ export interface Service {
   active: boolean
 }
 
-export interface Technician {
-  id: string
-  name: string
-  active: boolean
-  photoUrl: string | null // kiosk shows an initial avatar when null
-}
-
 export type CheckinStatus = 'waiting' | 'in_service' | 'completed' | 'cancelled'
 
 export interface Checkin {
   id: string
   customerId: string
   serviceIds: string[]
-  technicianId: string | null
   status: CheckinStatus
   createdAt: string // ISO timestamp
 }
 
 export type RewardType = 'fixed' | 'percent'
 
+// How a promotion becomes claimable (the reward itself — reward_type/value — is
+// orthogonal). Birthday is just a date_window trigger anchored on the birthday.
+//   'points'      — customer has >= pointsPerReward points
+//   'date_window' — today is within the anchor-date window, once per year
+//   'always'      — any visit (standing promo / welcome offer)
+export type PromotionTrigger = 'points' | 'date_window' | 'always'
+
+// Which customer date a date_window trigger anchors on ('birthday' for now).
+export type PromotionDateAnchor = 'birthday'
+
 export interface LoyaltyProgram {
   id: string
   name: string // e.g. "10 Point"
   description: string // e.g. "10 points get $10 off"
-  pointsPerReward: number // redemption threshold, e.g. 10
+  triggerType: PromotionTrigger // points | date_window | always
+  dateAnchor: PromotionDateAnchor | null // set when triggerType = 'date_window'
+  windowBeforeDays: number // date_window: days before the anchor date
+  windowAfterDays: number // date_window: days after the anchor date
+  pointsPerReward: number // redemption threshold (points trigger; 0 otherwise)
   rewardType: RewardType // 'fixed' = $ off, 'percent' = % off
   rewardValue: number // dollars (fixed) or percent (percent)
   active: boolean
@@ -74,7 +80,6 @@ export interface CreateCheckinInput {
   name: string
   customerId: string | null
   serviceIds: string[]
-  technicianId: string | null
   birthday: string | null // "YYYY-MM-DD" or null
   consent: boolean // marketing-contact consent (not required to check in)
 }
@@ -85,13 +90,12 @@ export interface AppSettings {
   birthdayDaysAfter: number
 }
 
-// One row of a customer's visit history, with resolved service + staff names.
+// One row of a customer's visit history, with resolved service names.
 export interface CheckinHistoryItem {
   id: string
   status: CheckinStatus
   createdAt: string
   serviceNames: string[]
-  technicianName: string | null
 }
 
 export interface CreateCheckinResult {
@@ -136,13 +140,6 @@ export interface ServiceGroupRow {
   active: boolean
 }
 
-export interface TechnicianRow {
-  id: string
-  name: string
-  active: boolean
-  photo_url: string | null
-}
-
 export interface LoyaltyProgramRow {
   id: string
   name: string
@@ -151,13 +148,16 @@ export interface LoyaltyProgramRow {
   reward_type: RewardType
   reward_value: number
   reward_amount?: number // legacy column, kept in sync
+  trigger_type?: PromotionTrigger
+  date_anchor?: PromotionDateAnchor | null
+  window_before_days?: number
+  window_after_days?: number
   active: boolean
 }
 
 export interface CheckinRow {
   id: string
   customer_id: string
-  technician_id: string | null
   status: CheckinStatus
   created_at: string
 }

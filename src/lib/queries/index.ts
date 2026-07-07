@@ -1,6 +1,5 @@
 // Kiosk (customer-facing) hooks.
 export { useServices } from './useServices'
-export { useTechnicians } from './useTechnicians'
 export {
   useLoyaltyProgram,
   useActiveLoyaltyPrograms,
@@ -39,15 +38,6 @@ export {
 } from './useServicesAdmin'
 export type { ServiceInput } from './useServicesAdmin'
 
-// Technician CRUD (admin).
-export {
-  useTechniciansAdmin,
-  useCreateTechnician,
-  useUpdateTechnician,
-  useDeleteTechnician,
-  techniciansAdminKey,
-} from './useTechniciansAdmin'
-export type { TechnicianInput } from './useTechniciansAdmin'
 
 // App settings (birthday window).
 export { useSettings, useUpdateSettings, settingsKey } from './useSettings'

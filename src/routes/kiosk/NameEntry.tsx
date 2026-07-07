@@ -16,10 +16,8 @@ export function NameEntry() {
   const navigate = useNavigate()
   const flow = useKioskFlow()
   const canContinue = flow.name.trim().length > 0
-  const currentYear = new Date().getFullYear()
   // Hold birthday as PARTS locally so a partial selection (e.g. day only) sticks.
-  // The flow's date string stays null until all three are chosen — that's fine,
-  // it's what gets submitted.
+  // The flow's date string stays null until both day+month are chosen.
   const [birthdayParts, setBirthdayParts] = useState<BirthdayParts>(() =>
     dateStringToParts(flow.birthday),
   )
@@ -65,7 +63,6 @@ export function NameEntry() {
           <BirthdayDropdowns
             value={birthdayParts}
             onChange={onBirthdayChange}
-            currentYear={currentYear}
             variant="dark"
           />
         </div>

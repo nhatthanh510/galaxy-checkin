@@ -7,7 +7,6 @@ import { KioskFlowProvider } from './routes/kiosk/FlowContext'
 import { PhoneEntry } from './routes/kiosk/PhoneEntry'
 import { NameEntry } from './routes/kiosk/NameEntry'
 import { ServiceSelection } from './routes/kiosk/ServiceSelection'
-import { TechnicianSelection } from './routes/kiosk/TechnicianSelection'
 import { Success } from './routes/kiosk/Success'
 import { Login } from './routes/Login'
 import { AdminLayout } from './routes/admin/AdminLayout'
@@ -17,7 +16,6 @@ import { CustomerImport } from './routes/admin/CustomerImport'
 import { LoyaltySettings } from './routes/admin/LoyaltySettings'
 import { ServicesManage } from './routes/admin/ServicesManage'
 import { GroupsManage } from './routes/admin/GroupsManage'
-import { StaffManage } from './routes/admin/StaffManage'
 import { Settings } from './routes/admin/Settings'
 
 const queryClient = new QueryClient({
@@ -56,7 +54,6 @@ export default function App() {
               <Route path="/" element={<PhoneEntry />} />
               <Route path="/kiosk/name" element={<NameEntry />} />
               <Route path="/kiosk/services" element={<ServiceSelection />} />
-              <Route path="/kiosk/technician" element={<TechnicianSelection />} />
               <Route path="/kiosk/success" element={<Success />} />
             </Route>
 
@@ -75,7 +72,6 @@ export default function App() {
               <Route path="customers/:id" element={<CustomerDetail />} />
               <Route path="services" element={<ServicesManage />} />
               <Route path="groups" element={<GroupsManage />} />
-              <Route path="staff" element={<StaffManage />} />
               <Route path="loyalty" element={<LoyaltySettings />} />
               <Route path="settings" element={<Settings />} />
             </Route>

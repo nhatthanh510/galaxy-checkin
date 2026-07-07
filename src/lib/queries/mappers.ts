@@ -10,8 +10,6 @@ import type {
   ServiceGroup,
   ServiceGroupRow,
   ServiceRow,
-  Technician,
-  TechnicianRow,
 } from '../../types'
 
 export function mapCustomer(row: CustomerRow): Customer {
@@ -42,20 +40,15 @@ export function mapServiceGroup(row: ServiceGroupRow): ServiceGroup {
   return { id: row.id, name: row.name, active: row.active }
 }
 
-export function mapTechnician(row: TechnicianRow): Technician {
-  return {
-    id: row.id,
-    name: row.name,
-    active: row.active,
-    photoUrl: row.photo_url,
-  }
-}
-
 export function mapLoyaltyProgram(row: LoyaltyProgramRow): LoyaltyProgram {
   return {
     id: row.id,
     name: row.name,
     description: row.description,
+    triggerType: row.trigger_type ?? 'points',
+    dateAnchor: row.date_anchor ?? null,
+    windowBeforeDays: row.window_before_days ?? 7,
+    windowAfterDays: row.window_after_days ?? 7,
     pointsPerReward: row.points_per_reward,
     rewardType: row.reward_type ?? 'fixed',
     rewardValue: Number(row.reward_value ?? row.reward_amount ?? 0),

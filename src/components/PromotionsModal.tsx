@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import type { Customer } from '../types'
-import { useRedeemPoints, useClaimBirthday } from '../lib/queries'
+import { useRedeemPoints } from '../lib/queries'
 import { playChime } from '../lib/sound'
 
-// One eligible promotion the customer can act on right now. Multiple 'points'
-// promos can coexist (one per active loyalty program), so each has a unique id.
+// One eligible promotion — a redeemable loyalty program. All are redeemed via
+// redeem_points by programId; the trigger decides what changes on the customer.
 export interface Promotion {
   id: string
-  kind: 'points' | 'birthday'
-  programId?: string // set for 'points' promos — which program to redeem
+  programId: string
+  // A date_window/always claim stamps birthday_redeemed_year (once-per-year
+  // guard); a points claim decrements the balance. This flag says which patch
+  // to apply after a successful redeem.
+  stampsYear: boolean
   title: string
   detail: string
   actionLabel: string
@@ -31,7 +34,6 @@ export function PromotionsModal({
   onClose,
 }: PromotionsModalProps) {
   const redeem = useRedeemPoints()
-  const claim = useClaimBirthday()
   const currentYear = new Date().getFullYear()
   // Which promo is currently being acted on — so only that button shows loading.
   const [actingId, setActingId] = useState<string | null>(null)
@@ -44,23 +46,24 @@ export function PromotionsModal({
   const onAct = async (promo: Promotion) => {
     setActingId(promo.id)
     try {
-      if (promo.kind === 'points') {
-        const result = await redeem.mutateAsync({
-          customerId: customer.id,
-          programId: promo.programId ?? null,
-        })
-        onCustomerChange({ pointsBalance: result.pointsBalance })
-      } else {
-        await claim.mutateAsync(customer.id)
-        onCustomerChange({ birthdayRedeemedYear: currentYear })
-      }
+      const result = await redeem.mutateAsync({
+        customerId: customer.id,
+        programId: promo.programId,
+      })
+      // Points redeem updates the balance; a date-window claim marks the year so
+      // it stops showing until next year.
+      onCustomerChange(
+        promo.stampsYear
+          ? { birthdayRedeemedYear: currentYear }
+          : { pointsBalance: result.pointsBalance },
+      )
     } finally {
       setActingId(null)
     }
   }
 
   const busy = actingId != null
-  const error = redeem.error || claim.error
+  const error = redeem.error
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">

@@ -27,7 +27,7 @@ export function ServiceSelection() {
   const customer = flow.customer
   const noServices = !isLoading && (services ?? []).length === 0
 
-  const goNext = () => navigate('/kiosk/technician')
+  const goNext = () => navigate('/kiosk/success')
 
   return (
     <KioskLayout>

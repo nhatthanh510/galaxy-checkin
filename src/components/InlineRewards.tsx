@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Customer } from '../types'
-import { useRedeemPoints, useClaimBirthday } from '../lib/queries'
+import { useRedeemPoints } from '../lib/queries'
 import { useEligiblePromotions } from '../lib/useEligiblePromotions'
 import type { Promotion } from './PromotionsModal'
 
@@ -12,12 +12,11 @@ interface InlineRewardsProps {
 }
 
 // In-context rewards panel for the kiosk services screen — one action per
-// eligible promo (redeem points, claim birthday). No interrupting popup: the
-// customer sees and acts on rewards right where they are. Hidden when none.
+// eligible reward (points or birthday). No interrupting popup: the customer
+// sees and acts on rewards right where they are. Hidden when none.
 export function InlineRewards({ customer, onCustomerChange }: InlineRewardsProps) {
   const promotions = useEligiblePromotions(customer)
   const redeem = useRedeemPoints()
-  const claim = useClaimBirthday()
   const currentYear = new Date().getFullYear()
   // Which promo is currently being acted on — so only that button shows loading.
   const [actingId, setActingId] = useState<string | null>(null)
@@ -25,16 +24,15 @@ export function InlineRewards({ customer, onCustomerChange }: InlineRewardsProps
   const onAct = async (promo: Promotion) => {
     setActingId(promo.id)
     try {
-      if (promo.kind === 'points') {
-        const result = await redeem.mutateAsync({
-          customerId: customer.id,
-          programId: promo.programId ?? null,
-        })
-        onCustomerChange({ pointsBalance: result.pointsBalance })
-      } else {
-        await claim.mutateAsync(customer.id)
-        onCustomerChange({ birthdayRedeemedYear: currentYear })
-      }
+      const result = await redeem.mutateAsync({
+        customerId: customer.id,
+        programId: promo.programId,
+      })
+      onCustomerChange(
+        promo.stampsYear
+          ? { birthdayRedeemedYear: currentYear }
+          : { pointsBalance: result.pointsBalance },
+      )
     } finally {
       setActingId(null)
     }
@@ -44,7 +42,7 @@ export function InlineRewards({ customer, onCustomerChange }: InlineRewardsProps
   if (promotions.length === 0) return null
 
   const busy = actingId != null
-  const error = redeem.error || claim.error
+  const error = redeem.error
 
   return (
     <div className="mt-4 rounded-2xl border border-brand-400/30 bg-brand-500/10 p-5">

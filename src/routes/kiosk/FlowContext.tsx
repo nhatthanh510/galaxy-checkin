@@ -9,7 +9,6 @@ const emptyState: FlowState = {
   consent: true, // marketing consent opt-in checked by default
   customer: null,
   selectedServiceIds: [],
-  technicianId: null,
 }
 
 export function KioskFlowProvider({ children }: { children: ReactNode }) {
@@ -39,10 +38,6 @@ export function KioskFlowProvider({ children }: { children: ReactNode }) {
       })),
     [],
   )
-  const setTechnician = useCallback(
-    (technicianId: string | null) => setState((s) => ({ ...s, technicianId })),
-    [],
-  )
   const reset = useCallback(() => setState(emptyState), [])
 
   const value = useMemo<FlowContextValue>(
@@ -54,10 +49,9 @@ export function KioskFlowProvider({ children }: { children: ReactNode }) {
       setConsent,
       setCustomer,
       toggleService,
-      setTechnician,
       reset,
     }),
-    [state, setPhone, setName, setBirthday, setConsent, setCustomer, toggleService, setTechnician, reset],
+    [state, setPhone, setName, setBirthday, setConsent, setCustomer, toggleService, reset],
   )
 
   return <FlowContext.Provider value={value}>{children}</FlowContext.Provider>

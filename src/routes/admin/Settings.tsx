@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { useSettings, useUpdateSettings } from '../../lib/queries'
 import type { AppSettings } from '../../types'
 
-// Admin: app-wide settings. Currently the birthday "soon" window used to
-// highlight customers on the kiosk and admin list.
+// Admin: app-wide settings. Currently the birthday "highlight" window used to
+// flag upcoming-birthday customers with a 🎂 badge in the admin list/detail.
+// NOTE: this is a reporting window only — when a birthday *reward* is claimable
+// is configured per-program on the Loyalty settings page (date_window trigger).
 export function Settings() {
   const { data: settings, isLoading, error } = useSettings()
 
@@ -38,8 +40,10 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
     <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
       <h2 className="text-lg font-semibold">Birthday highlight window</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Customers are flagged with a 🎂 badge on the kiosk and admin list when their
-        birthday falls within this window of today.
+        Flags customers with a 🎂 badge in the admin customer list and detail when their
+        birthday falls within this window of today. This is for staff visibility only —
+        it does <span className="font-medium">not</span> control when a birthday reward can
+        be claimed (that's set per-program on the Loyalty settings page).
       </p>
 
       <div className="mt-4 grid grid-cols-2 gap-4">

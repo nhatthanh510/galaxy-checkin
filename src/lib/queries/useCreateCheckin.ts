@@ -18,7 +18,7 @@ export function useCreateCheckin() {
         p_phone: input.phone,
         p_name: input.name,
         p_service_ids: input.serviceIds,
-        p_technician_id: input.technicianId,
+        p_technician_id: null, // preferred-staff feature removed
         p_birthday: input.birthday,
         p_consent: input.consent,
       })
@@ -33,7 +33,6 @@ export function useCreateCheckin() {
           id: row.checkin_id,
           customerId: row.customer_id,
           serviceIds: input.serviceIds,
-          technicianId: input.technicianId,
           status: 'waiting',
           createdAt: new Date().toISOString(),
         },

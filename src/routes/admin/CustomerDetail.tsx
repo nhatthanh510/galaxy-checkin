@@ -97,7 +97,6 @@ function VisitHistory({ checkins }: { checkins: CheckinHistoryItem[] }) {
               <tr>
                 <th className="px-4 py-2 font-medium">Date</th>
                 <th className="px-4 py-2 font-medium">Services</th>
-                <th className="px-4 py-2 font-medium">Preferred staff</th>
                 <th className="px-4 py-2 font-medium">Status</th>
               </tr>
             </thead>
@@ -226,9 +225,11 @@ function ProfileForm({ customer }: { customer: Customer }) {
     setSaved(true)
   }
 
-  // Every active program the customer currently has enough points for.
+  // Points-triggered programs the customer currently has enough points for.
+  // Date-window (birthday) and standing promos aren't points-redeemable — the
+  // birthday claim has its own control below.
   const eligiblePrograms = (programs ?? []).filter(
-    (p) => balance >= p.pointsPerReward,
+    (p) => p.triggerType === 'points' && balance >= p.pointsPerReward,
   )
 
   const onRedeem = async (program: LoyaltyProgram) => {
@@ -271,12 +272,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
           Birthday <span className="font-normal text-slate-400">({formatBirthday(customer.birthday)})</span>
         </span>
         <div className="mt-1">
-          <BirthdayDropdowns
-            value={birthday}
-            onChange={setBirthday}
-            currentYear={currentYear}
-            variant="light"
-          />
+          <BirthdayDropdowns value={birthday} onChange={setBirthday} variant="light" />
         </div>
       </div>
       <div className="mt-4 flex items-center gap-3">
@@ -363,7 +359,6 @@ function VisitRow({ visit }: { visit: CheckinHistoryItem }) {
       <td className="px-4 py-2 text-slate-600">
         {visit.serviceNames.length > 0 ? visit.serviceNames.join(', ') : '—'}
       </td>
-      <td className="px-4 py-2 text-slate-600">{visit.technicianName ?? '—'}</td>
       <td className="px-4 py-2">
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
           {visit.status}

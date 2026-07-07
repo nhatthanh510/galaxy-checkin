@@ -6,8 +6,28 @@ import {
   useDeleteLoyaltyProgram,
   type LoyaltyProgramInput,
 } from '../../lib/queries'
-import type { LoyaltyProgram, RewardType } from '../../types'
+import type { LoyaltyProgram, PromotionTrigger, RewardType } from '../../types'
 import { formatReward } from '../../lib/reward'
+
+// Human labels for each trigger, used in the list, view, and form.
+const TRIGGER_LABELS: Record<PromotionTrigger, string> = {
+  points: 'Points reward',
+  date_window: '🎂 Birthday reward',
+  always: 'Standing promo',
+}
+
+// Short "how it's earned → reward" summary for the list row.
+function earnSummary(p: LoyaltyProgram): string {
+  const reward = formatReward(p.rewardType, p.rewardValue)
+  switch (p.triggerType) {
+    case 'date_window':
+      return `🎂 Birthday → ${reward}`
+    case 'always':
+      return `Any visit → ${reward}`
+    default:
+      return `${p.pointsPerReward} pts → ${reward}`
+  }
+}
 
 type Mode =
   | { kind: 'list' }
@@ -109,9 +129,7 @@ function ProgramRow({
         </button>
         <div className="text-xs text-slate-400">{program.description}</div>
       </td>
-      <td className="px-4 py-3 text-slate-600">
-        {program.pointsPerReward} pts → {formatReward(program.rewardType, program.rewardValue)}
-      </td>
+      <td className="px-4 py-3 text-slate-600">{earnSummary(program)}</td>
       <td className="px-4 py-3">
         {program.active ? (
           <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
@@ -151,7 +169,16 @@ function ProgramView({ program, onBack }: { program: LoyaltyProgram; onBack: () 
       <h1 className="mt-2 text-2xl font-bold">{program.name}</h1>
       <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-white p-6 text-sm">
         <Field label="Description" value={program.description} />
-        <Field label="Points per reward" value={String(program.pointsPerReward)} />
+        <Field label="Trigger" value={TRIGGER_LABELS[program.triggerType]} />
+        {program.triggerType === 'points' && (
+          <Field label="Points per reward" value={String(program.pointsPerReward)} />
+        )}
+        {program.triggerType === 'date_window' && (
+          <Field
+            label="Claim window"
+            value={`${program.windowBeforeDays} days before → ${program.windowAfterDays} days after birthday`}
+          />
+        )}
         <Field
           label="Reward"
           value={formatReward(program.rewardType, program.rewardValue)}
@@ -185,7 +212,12 @@ function ProgramForm({
 
   const [name, setName] = useState(program?.name ?? '')
   const [description, setDescription] = useState(program?.description ?? '')
+  const [triggerType, setTriggerType] = useState<PromotionTrigger>(
+    program?.triggerType ?? 'points',
+  )
   const [pointsPerReward, setPointsPerReward] = useState(String(program?.pointsPerReward ?? 10))
+  const [windowBefore, setWindowBefore] = useState(String(program?.windowBeforeDays ?? 7))
+  const [windowAfter, setWindowAfter] = useState(String(program?.windowAfterDays ?? 7))
   const [rewardType, setRewardType] = useState<RewardType>(program?.rewardType ?? 'fixed')
   const [rewardValue, setRewardValue] = useState(String(program?.rewardValue ?? 10))
   const [active, setActive] = useState(program?.active ?? true)
@@ -197,7 +229,12 @@ function ProgramForm({
     const input: LoyaltyProgramInput = {
       name: name.trim(),
       description: description.trim(),
-      pointsPerReward: Number(pointsPerReward) || 0,
+      triggerType,
+      // Only date-window triggers anchor on a customer date (birthday for now).
+      dateAnchor: triggerType === 'date_window' ? 'birthday' : null,
+      windowBeforeDays: Math.max(0, Number(windowBefore) || 0),
+      windowAfterDays: Math.max(0, Number(windowAfter) || 0),
+      pointsPerReward: triggerType === 'points' ? Number(pointsPerReward) || 0 : 0,
       rewardType,
       rewardValue: Number(rewardValue) || 0,
       active,
@@ -236,7 +273,28 @@ function ProgramForm({
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
           />
         </label>
-        <div className="grid grid-cols-2 gap-4">
+        {/* Trigger: how the reward becomes claimable. */}
+        <label className="block">
+          <span className="text-sm font-medium text-slate-600">How is it earned?</span>
+          <select
+            value={triggerType}
+            onChange={(e) => setTriggerType(e.target.value as PromotionTrigger)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+          >
+            <option value="points">Points — redeem when the customer has enough points</option>
+            <option value="date_window">🎂 Birthday — claimed around the customer's birthday</option>
+            <option value="always">Standing promo — claimable on any visit</option>
+          </select>
+          <span className="mt-1 block text-xs text-slate-400">
+            {triggerType === 'points' && 'The customer spends points to redeem this reward.'}
+            {triggerType === 'date_window' &&
+              'No points needed — claimable once per year inside the birthday window below.'}
+            {triggerType === 'always' && 'No points needed — claimable once per year on any visit.'}
+          </span>
+        </label>
+
+        {/* Points threshold — only for the points trigger. */}
+        {triggerType === 'points' && (
           <label className="block">
             <span className="text-sm font-medium text-slate-600">Points per reward</span>
             <input
@@ -246,18 +304,45 @@ function ProgramForm({
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
             />
           </label>
-          <label className="block">
-            <span className="text-sm font-medium text-slate-600">Reward type</span>
-            <select
-              value={rewardType}
-              onChange={(e) => setRewardType(e.target.value as RewardType)}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-            >
-              <option value="fixed">Fixed amount ($)</option>
-              <option value="percent">Percentage (%)</option>
-            </select>
-          </label>
-        </div>
+        )}
+
+        {/* Claim window — only for date-window (birthday) triggers. */}
+        {triggerType === 'date_window' && (
+          <div className="grid grid-cols-2 gap-4 rounded-lg bg-pink-50 p-3">
+            <label className="block">
+              <span className="text-sm font-medium text-slate-600">Days before birthday</span>
+              <input
+                type="number"
+                min={0}
+                value={windowBefore}
+                onChange={(e) => setWindowBefore(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-200"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-slate-600">Days after birthday</span>
+              <input
+                type="number"
+                min={0}
+                value={windowAfter}
+                onChange={(e) => setWindowAfter(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-200"
+              />
+            </label>
+          </div>
+        )}
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-600">Reward type</span>
+          <select
+            value={rewardType}
+            onChange={(e) => setRewardType(e.target.value as RewardType)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+          >
+            <option value="fixed">Fixed amount ($)</option>
+            <option value="percent">Percentage (%)</option>
+          </select>
+        </label>
         <label className="block">
           <span className="text-sm font-medium text-slate-600">
             {rewardType === 'percent' ? 'Reward percentage (%)' : 'Reward amount ($)'}

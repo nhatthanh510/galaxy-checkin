@@ -6,13 +6,17 @@ export const MONTHS = [
 ] as const
 
 // Parts as used by the three dropdowns. Any part empty => no birthday.
+// We only capture day + month (birthdays are used for greetings/perks, not age).
+// A sentinel year is stored so the DB `date` column stays valid; the year is
+// never shown or used (all comparisons ignore it).
+const SENTINEL_YEAR = 2000 // leap year -> Feb 29 is valid
+
 export interface BirthdayParts {
   day: number | null // 1-31
   month: number | null // 1-12
-  year: number | null
 }
 
-export const emptyBirthday: BirthdayParts = { day: null, month: null, year: null }
+export const emptyBirthday: BirthdayParts = { day: null, month: null }
 
 // Dropdown option ranges.
 export function dayOptions(): number[] {
@@ -21,26 +25,21 @@ export function dayOptions(): number[] {
 export function monthOptions(): { value: number; label: string }[] {
   return MONTHS.map((label, i) => ({ value: i + 1, label }))
 }
-// Reasonable adult range: current year back ~100 years. Pass the current year in
-// (Date.now is fine in app runtime).
-export function yearOptions(currentYear: number): number[] {
-  return Array.from({ length: 100 }, (_, i) => currentYear - i)
-}
 
-// Convert parts -> "YYYY-MM-DD" for the DB `date` column, or null if incomplete.
+// Convert parts -> "YYYY-MM-DD" (sentinel year) for the DB, or null if incomplete.
 export function partsToDateString(p: BirthdayParts): string | null {
-  if (p.day == null || p.month == null || p.year == null) return null
+  if (p.day == null || p.month == null) return null
   const mm = String(p.month).padStart(2, '0')
   const dd = String(p.day).padStart(2, '0')
-  return `${p.year}-${mm}-${dd}`
+  return `${SENTINEL_YEAR}-${mm}-${dd}`
 }
 
-// Convert a stored "YYYY-MM-DD" (or null) -> parts for the dropdowns.
+// Convert a stored "YYYY-MM-DD" (or null) -> day/month parts for the dropdowns.
 export function dateStringToParts(s: string | null): BirthdayParts {
   if (!s) return emptyBirthday
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s)
   if (!m) return emptyBirthday
-  return { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) }
+  return { month: Number(m[2]), day: Number(m[3]) }
 }
 
 // Day-of-year (1-366) for a given month/day, using a fixed non-leap reference
@@ -66,6 +65,39 @@ export function birthdayDayDiff(birthday: string | null, today: Date): number | 
   return diff
 }
 
+// --- Generic date-window trigger -------------------------------------------
+// A "date_window" promotion is claimable when today is within [daysBefore,
+// daysAfter] of some customer date-anchor (birthday today; anniversary later),
+// once per calendar year. These helpers are anchor-agnostic — pass whichever
+// stored "YYYY-MM-DD" anchor date applies. The birthday-named wrappers below
+// delegate here so existing birthday callers keep working.
+
+// Is `anchorDate` within [daysBefore, daysAfter] of `today` (ignoring year)?
+export function isDateInWindow(
+  anchorDate: string | null,
+  today: Date,
+  daysBefore: number,
+  daysAfter: number,
+): boolean {
+  const diff = birthdayDayDiff(anchorDate, today)
+  if (diff == null) return false
+  return diff >= -daysAfter && diff <= daysBefore
+}
+
+// Claimable now? In-window AND not already claimed this calendar year.
+export function shouldClaimDateWindow(
+  anchorDate: string | null,
+  claimedYear: number | null,
+  today: Date,
+  daysBefore: number,
+  daysAfter: number,
+): boolean {
+  if (!isDateInWindow(anchorDate, today, daysBefore, daysAfter)) return false
+  return claimedYear !== today.getFullYear()
+}
+
+// --- Birthday wrappers (thin aliases over the generic helpers) --------------
+
 // Is `birthday` within [daysBefore, daysAfter] of `today` (ignoring year)?
 export function isBirthdaySoon(
   birthday: string | null,
@@ -73,9 +105,7 @@ export function isBirthdaySoon(
   daysBefore: number,
   daysAfter: number,
 ): boolean {
-  const diff = birthdayDayDiff(birthday, today)
-  if (diff == null) return false
-  return diff >= -daysAfter && diff <= daysBefore
+  return isDateInWindow(birthday, today, daysBefore, daysAfter)
 }
 
 // Should we show the birthday reminder? True when the birthday is within the
@@ -87,8 +117,7 @@ export function shouldRemindBirthday(
   daysBefore: number,
   daysAfter: number,
 ): boolean {
-  if (!isBirthdaySoon(birthday, today, daysBefore, daysAfter)) return false
-  return redeemedYear !== today.getFullYear()
+  return shouldClaimDateWindow(birthday, redeemedYear, today, daysBefore, daysAfter)
 }
 
 export type BirthdayStatus = 'today' | 'upcoming' | 'recent' | 'claimed' | 'none'
@@ -131,11 +160,10 @@ export function birthdayStatusBadge(
   }
 }
 
-// Pretty birthday for display, e.g. "15 March 1990" or "15 March" (no year).
+// Pretty birthday for display, e.g. "15 March" (day + month only).
 export function formatBirthday(birthday: string | null): string {
   if (!birthday) return '—'
   const p = dateStringToParts(birthday)
   if (p.month == null || p.day == null) return '—'
-  const monthName = MONTHS[p.month - 1]
-  return p.year ? `${p.day} ${monthName} ${p.year}` : `${p.day} ${monthName}`
+  return `${p.day} ${MONTHS[p.month - 1]}`
 }

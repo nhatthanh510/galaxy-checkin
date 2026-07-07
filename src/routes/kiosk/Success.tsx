@@ -26,7 +26,6 @@ export function Success() {
         name: flow.customer?.name ?? flow.name,
         customerId: flow.customer?.id ?? null,
         serviceIds: flow.selectedServiceIds,
-        technicianId: flow.technicianId,
         birthday: flow.birthday,
         consent: flow.consent,
       })

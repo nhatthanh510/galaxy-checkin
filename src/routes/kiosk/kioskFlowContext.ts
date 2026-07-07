@@ -13,7 +13,6 @@ export interface FlowState {
   consent: boolean // marketing-contact consent
   customer: Customer | null // matched known customer, else null
   selectedServiceIds: string[]
-  technicianId: string | null
 }
 
 export interface FlowContextValue extends FlowState {
@@ -23,7 +22,6 @@ export interface FlowContextValue extends FlowState {
   setConsent: (consent: boolean) => void
   setCustomer: (customer: Customer | null) => void
   toggleService: (serviceId: string) => void
-  setTechnician: (technicianId: string | null) => void
   reset: () => void
 }
 
