@@ -50,20 +50,37 @@ SMS/email are **stubbed** — the app records notification intent via the
 `queue_notification` RPC (rows in `notification` with status `stubbed`). No message is
 sent yet, and the app does not call the Edge Function today.
 
-`supabase/functions/send-notification/` is a Supabase **Edge Function** (Deno) that does
-the same stubbed insert — it's where real Twilio/email delivery goes later. Supabase hosts
-it; there's no server to run and no port to manage. Deploy it when you're ready:
+Two Supabase **Edge Functions** (Deno) send SMS via **ClickSend** (shared logic in
+`supabase/functions/_shared/sms.ts`). Supabase hosts them; there's no server to run.
+
+- `send-notification` — sends one SMS: check-in confirmations (built-in `template`) and
+  marketing campaigns (fully-rendered `message`). Records a `notification` row.
+- `send-birthday-sms` — texts today's birthdays (consented, once per year). Invoked daily
+  by the `daily-birthday-sms` pg_cron job.
 
 ```bash
 supabase functions deploy send-notification
-# set provider secrets as function env vars (only needed once you wire real delivery):
-supabase secrets set TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_FROM=...
+supabase functions deploy send-birthday-sms
+# ClickSend creds (once); without them, sends degrade to logged 'stubbed' rows:
+supabase secrets set CLICKSEND_USERNAME=... CLICKSEND_API_KEY=... CLICKSEND_FROM=GalaxyNail
 ```
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically by the Edge
-runtime. When you're ready for real delivery, fill in the `TODO(twilio/email)` in
-`index.ts` and switch `src/lib/notifications.ts` to call
-`supabase.functions.invoke('send-notification', { body })` instead of the RPC.
+runtime.
+
+**Enable the daily birthday cron** (migration `0004` sets up the job, but it needs the
+function URL + a service-role key to call itself). Run once in the SQL editor:
+
+```sql
+insert into app_secret (key, value) values
+  ('edge_url', 'https://<project-ref>.functions.supabase.co'),
+  ('service_role_key', '<your-service-role-key>')
+on conflict (key) do update set value = excluded.value;
+```
+
+`app_secret` has no RLS policies, so only the service role / SECURITY DEFINER job reads it
+— the keys never reach the browser. The job runs at 09:00 UTC; adjust the schedule in the
+`cron.schedule('daily-birthday-sms', ...)` call if you want salon-local time.
 
 > The IDE may flag `Deno`/`https://` imports in `index.ts` as errors — that's because the
 > editor type-checks it as Node. It's a Deno file; it runs fine on deploy. Install the Deno

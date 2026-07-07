@@ -38,6 +38,12 @@ export function AdminLayout() {
           <NavLink to="/admin/loyalty" className={linkClass}>
             Loyalty settings
           </NavLink>
+          <NavLink to="/admin/marketing" className={linkClass}>
+            Marketing SMS
+          </NavLink>
+          <NavLink to="/admin/sms-templates" className={linkClass}>
+            SMS templates
+          </NavLink>
           <NavLink to="/admin/settings" className={linkClass}>
             Settings
           </NavLink>

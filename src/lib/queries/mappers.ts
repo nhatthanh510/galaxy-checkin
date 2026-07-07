@@ -10,6 +10,8 @@ import type {
   ServiceGroup,
   ServiceGroupRow,
   ServiceRow,
+  SmsTemplate,
+  SmsTemplateRow,
 } from '../../types'
 
 export function mapCustomer(row: CustomerRow): Customer {
@@ -21,6 +23,18 @@ export function mapCustomer(row: CustomerRow): Customer {
     pointsBalance: row.points_balance,
     birthday: row.birthday ?? null,
     birthdayRedeemedYear: row.birthday_redeemed_year ?? null,
+    marketingConsent: row.marketing_consent ?? false,
+  }
+}
+
+export function mapSmsTemplate(row: SmsTemplateRow): SmsTemplate {
+  return {
+    id: row.id,
+    name: row.name,
+    body: row.body,
+    kind: row.kind,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   }
 }
 

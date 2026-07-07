@@ -44,6 +44,7 @@ export function useCreateCheckin() {
           pointsBalance: row.points_balance,
           birthday: input.birthday,
           birthdayRedeemedYear: null,
+          marketingConsent: input.consent,
         },
       }
 

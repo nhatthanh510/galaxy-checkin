@@ -16,6 +16,8 @@ import { CustomerImport } from './routes/admin/CustomerImport'
 import { LoyaltySettings } from './routes/admin/LoyaltySettings'
 import { ServicesManage } from './routes/admin/ServicesManage'
 import { GroupsManage } from './routes/admin/GroupsManage'
+import { SmsTemplates } from './routes/admin/SmsTemplates'
+import { Marketing } from './routes/admin/Marketing'
 import { Settings } from './routes/admin/Settings'
 
 const queryClient = new QueryClient({
@@ -73,6 +75,8 @@ export default function App() {
               <Route path="services" element={<ServicesManage />} />
               <Route path="groups" element={<GroupsManage />} />
               <Route path="loyalty" element={<LoyaltySettings />} />
+              <Route path="sms-templates" element={<SmsTemplates />} />
+              <Route path="marketing" element={<Marketing />} />
               <Route path="settings" element={<Settings />} />
             </Route>
 

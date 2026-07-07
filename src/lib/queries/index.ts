@@ -54,3 +54,15 @@ export type { ServiceGroupInput } from './useServiceGroups'
 
 // Birthday benefit claim.
 export { useClaimBirthday } from './useClaimBirthday'
+
+// SMS templates (admin CRUD) + marketing campaign send.
+export {
+  useSmsTemplates,
+  useCreateSmsTemplate,
+  useUpdateSmsTemplate,
+  useDeleteSmsTemplate,
+  smsTemplatesKey,
+} from './useSmsTemplates'
+export type { SmsTemplateInput } from './useSmsTemplates'
+export { useSendCampaign } from './useSendCampaign'
+export type { SendCampaignInput, CampaignResult } from './useSendCampaign'

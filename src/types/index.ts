@@ -10,6 +10,7 @@ export interface Customer {
   pointsBalance: number
   birthday: string | null // "YYYY-MM-DD" or null
   birthdayRedeemedYear: number | null // year the birthday benefit was last claimed
+  marketingConsent: boolean // opted in to marketing SMS
 }
 
 export interface ServiceGroup {
@@ -36,6 +37,30 @@ export interface Checkin {
   serviceIds: string[]
   status: CheckinStatus
   createdAt: string // ISO timestamp
+}
+
+// SMS marketing --------------------------------------------------------------
+
+export type NotificationKind = 'checkin' | 'marketing' | 'birthday'
+
+// A reusable, admin-authored SMS body. {{name}} / {{reward}} placeholders are
+// interpolated at send time.
+export interface SmsTemplate {
+  id: string
+  name: string
+  body: string
+  kind: NotificationKind
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SmsTemplateRow {
+  id: string
+  name: string
+  body: string
+  kind: NotificationKind
+  created_at: string
+  updated_at: string
 }
 
 export type RewardType = 'fixed' | 'percent'
@@ -116,6 +141,7 @@ export interface CustomerRow {
   points_balance: number
   birthday: string | null
   birthday_redeemed_year: number | null
+  marketing_consent?: boolean
   created_at?: string
 }
 

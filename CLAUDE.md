@@ -155,7 +155,23 @@ transitive dev dep declares an overly narrow Node range; installs work with plai
     ClickSend REST API and records the result (`sent`/`failed`, or `stubbed` if creds are
     absent) in the `notification` table. To go live: `supabase functions deploy
     send-notification` and `supabase secrets set CLICKSEND_USERNAME=... CLICKSEND_API_KEY=...`.
-    The check-in confirmation already fires through it.
+    The check-in confirmation already fires through it. `send-notification` accepts either
+    a built-in `template` (check-in messages) or a fully-rendered `message` (marketing);
+    shared ClickSend/insert logic lives in `supabase/functions/_shared/sms.ts`.
+  - **Marketing SMS (admin)**: reusable **SMS templates** (`sms_template` table, `{{name}}`
+    / `{{reward}}` placeholders) managed at `/admin/sms-templates`, and a **campaign** sender
+    at `/admin/marketing` that texts a chosen template to selected customers. Recipients are
+    **restricted to opted-in customers** (`customer.marketing_consent`) — enforced in the UI
+    and re-checkable server-side. Sends go one-per-recipient through `send-notification` with
+    `kind='marketing'`.
+  - **Birthday auto-SMS**: a `send-birthday-sms` Edge Function texts customers whose birthday
+    is today (consented, not already texted this year via `customer.birthday_sms_year`),
+    interpolating the active birthday program's reward into the `kind='birthday'` template. A
+    daily **pg_cron** job (`daily-birthday-sms`, 09:00 UTC, migration `0004`) invokes it via
+    `pg_net`, reading the function URL + service-role key from the `app_secret` table. To go
+    live: `supabase functions deploy send-birthday-sms` and
+    `insert into app_secret values ('edge_url','https://<ref>.functions.supabase.co'),
+    ('service_role_key','<service-role-key>');`
   - **Loyalty**: multiple active programs supported (kiosk carousel + one redeemable promo
     each); rewards are **fixed `$` or `percent` off** (`reward_type`/`reward_value`, see
     `formatReward` in `src/lib/reward.ts`). Points are awarded +1 per check-in.
