@@ -21,6 +21,8 @@ export function useCreateCheckin() {
         p_technician_id: null, // preferred-staff feature removed
         p_birthday: input.birthday,
         p_consent: input.consent,
+        // Skip the +1 when a points reward was redeemed this visit.
+        p_award_point: input.awardPoint ?? true,
       })
       if (error) throw error
 
@@ -42,6 +44,9 @@ export function useCreateCheckin() {
           name: row.customer_name,
           visitCount: row.visit_count,
           pointsBalance: row.points_balance,
+          // create_checkin doesn't return lifetime_points; not used on this path.
+          lifetimePoints: 0,
+          lastVisitAt: null,
           birthday: input.birthday,
           birthdayRedeemedYear: null,
           marketingConsent: input.consent,

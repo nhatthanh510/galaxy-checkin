@@ -2,7 +2,21 @@
 // quotes ("") and commas/newlines inside quotes — enough for customer import.
 
 // Column order shared by customer export + import.
-export const CSV_HEADERS = ['phone', 'name', 'points_balance', 'visit_count'] as const
+//
+// The first four are the original required columns; the trailing three are
+// optional (older 4-column CSVs still import). `birthday` is "YYYY-MM-DD" (the
+// sentinel year 2000 is fine — only day+month are used); `marketing_consent`
+// accepts 1/0, true/false, yes/no.
+export const CSV_HEADERS = [
+  'phone',
+  'name',
+  'points_balance',
+  'visit_count',
+  'lifetime_points',
+  'birthday',
+  'marketing_consent',
+  'last_visited',
+] as const
 
 // Parse CSV text into rows of cells. Returns [] for empty input.
 export function parseCsv(text: string): string[][] {

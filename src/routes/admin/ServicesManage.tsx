@@ -8,6 +8,8 @@ import {
   type ServiceInput,
 } from '../../lib/queries'
 import type { Service } from '../../types'
+import { Pagination } from '../../components/Pagination'
+import { usePagination } from '../../components/usePagination'
 
 type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; service: Service }
 
@@ -15,6 +17,11 @@ type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; service: Ser
 export function ServicesManage() {
   const { data: services, isLoading, error } = useServicesAdmin()
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
+  // Paginate the list (called unconditionally to satisfy rules of hooks).
+  const { page, pageCount, pageItems, setPage, canPrev, canNext, total } = usePagination(
+    services ?? [],
+    12,
+  )
 
   if (isLoading) return <p className="text-slate-500">Loading…</p>
   if (error) return <p className="text-red-600">{error.message}</p>
@@ -27,10 +34,10 @@ export function ServicesManage() {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Services</h1>
+          <h1 className="text-2xl font-bold">Services{total > 0 && ` (${total})`}</h1>
           <p className="mt-1 text-sm text-slate-500">
             Only <span className="font-medium">active</span> services appear on the kiosk.
           </p>
@@ -44,28 +51,37 @@ export function ServicesManage() {
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Category</th>
-              <th className="px-4 py-3 font-medium">Active</th>
-              <th className="px-4 py-3 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(services ?? []).map((s) => (
+        <div className="max-h-[calc(100vh-16rem)] overflow-y-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-500 shadow-sm">
+              <tr>
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Category</th>
+                <th className="px-4 py-3 font-medium">Active</th>
+                <th className="px-4 py-3 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+            {pageItems.map((s) => (
               <ServiceRow key={s.id} service={s} onEdit={() => setMode({ kind: 'edit', service: s })} />
             ))}
-            {services?.length === 0 && (
+            {total === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
                   No services yet. Add one to show it on the kiosk.
                 </td>
               </tr>
             )}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
+        <Pagination
+          page={page}
+          pageCount={pageCount}
+          canPrev={canPrev}
+          canNext={canNext}
+          onPage={setPage}
+        />
       </div>
     </div>
   )

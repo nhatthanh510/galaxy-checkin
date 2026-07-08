@@ -15,11 +15,16 @@ export function CustomersList() {
   const { data: settings } = useSettings()
   const [search, setSearch] = useState('')
   const [eligibleOnly, setEligibleOnly] = useState(false)
+  const [birthdayOnly, setBirthdayOnly] = useState(false)
+  const [page, setPage] = useState(0) // zero-based page index
 
-  // A customer is redeem-eligible when their balance meets the active program's
-  // threshold. If there's no active program, nobody is eligible.
+  // A customer is redeem-eligible (from admin) when their balance is STRICTLY
+  // above the lowest active points-program threshold. Admin can't tell whether a
+  // point was earned on today's visit, so staff only redeem above the threshold
+  // (> N), guaranteeing a point beyond the current cycle. If no active points
+  // program has a positive threshold, nobody is eligible.
   const threshold = program?.pointsPerReward ?? null
-  const isEligible = (points: number) => threshold != null && points >= threshold
+  const isEligible = (points: number) => threshold != null && points > threshold
 
   // Birthday status for a customer, using the configured window (default 7/7).
   const today = new Date()
@@ -32,31 +37,71 @@ export function CustomersList() {
     let list = customers ?? []
     const q = search.trim().toLowerCase()
     if (q) {
+      // Match on name always; only match on phone when the query has digits
+      // (otherwise "".includes('') is always true and every row matches).
+      const digits = q.replace(/\D/g, '')
       list = list.filter(
-        (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q.replace(/\D/g, '')),
+        (c) => c.name.toLowerCase().includes(q) || (digits !== '' && c.phone.includes(digits)),
       )
     }
     if (eligibleOnly && threshold != null) {
-      list = list.filter((c) => c.pointsBalance >= threshold)
+      list = list.filter((c) => c.pointsBalance > threshold)
+    }
+    if (birthdayOnly) {
+      list = list.filter((c) => {
+        const s = birthdayStatus(c.birthday, c.birthdayRedeemedYear, today, bdayBefore, bdayAfter)
+        // Upcoming/today/recent birthdays, not the ones already claimed this year.
+        return s !== 'none' && s !== 'claimed'
+      })
     }
     return list
-  }, [customers, search, eligibleOnly, threshold])
+    // `today` is a fresh Date each render but only its day matters; the window
+    // settings (bdayBefore/After) are the values that actually change results.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customers, search, eligibleOnly, threshold, birthdayOnly, bdayBefore, bdayAfter])
 
   const eligibleCount = useMemo(
-    () => (threshold == null ? 0 : (customers ?? []).filter((c) => c.pointsBalance >= threshold).length),
+    () => (threshold == null ? 0 : (customers ?? []).filter((c) => c.pointsBalance > threshold).length),
     [customers, threshold],
   )
+
+  const birthdayCount = useMemo(
+    () =>
+      (customers ?? []).filter((c) => {
+        const s = birthdayStatus(c.birthday, c.birthdayRedeemedYear, today, bdayBefore, bdayAfter)
+        return s !== 'none' && s !== 'claimed'
+      }).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [customers, bdayBefore, bdayAfter],
+  )
+
+  // Client-side pagination over the filtered list.
+  const PAGE_SIZE = 50
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  // Keep the page in range when the filter shrinks the list.
+  const safePage = Math.min(page, pageCount - 1)
+  const pageStart = safePage * PAGE_SIZE
+  const paged = filtered.slice(pageStart, pageStart + PAGE_SIZE)
 
   const onExport = () => {
     const rows: (string | number)[][] = [
       [...CSV_HEADERS],
-      ...(customers ?? []).map((c) => [c.phone, c.name, c.pointsBalance, c.visitCount]),
+      ...(customers ?? []).map((c) => [
+        c.phone,
+        c.name,
+        c.pointsBalance,
+        c.visitCount,
+        c.lifetimePoints,
+        c.birthday ?? '',
+        c.marketingConsent ? 1 : 0,
+        c.lastVisitAt ?? '',
+      ]),
     ]
     downloadCsv('customers.csv', toCsv(rows))
   }
 
   return (
-    <div>
+    <div className="flex h-full flex-col">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Customers</h1>
         <div className="flex gap-2">
@@ -79,7 +124,10 @@ export function CustomersList() {
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setPage(0)
+          }}
           placeholder="Search by name or phone…"
           className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
         />
@@ -88,7 +136,10 @@ export function CustomersList() {
             <input
               type="checkbox"
               checked={eligibleOnly}
-              onChange={(e) => setEligibleOnly(e.target.checked)}
+              onChange={(e) => {
+                setEligibleOnly(e.target.checked)
+                setPage(0)
+              }}
               className="h-4 w-4 accent-emerald-600"
             />
             Redeem-eligible only
@@ -97,25 +148,49 @@ export function CustomersList() {
             </span>
           </label>
         )}
+        <label className="flex items-center gap-2 text-sm text-slate-600">
+          <input
+            type="checkbox"
+            checked={birthdayOnly}
+            onChange={(e) => {
+              setBirthdayOnly(e.target.checked)
+              setPage(0)
+            }}
+            className="h-4 w-4 accent-pink-600"
+          />
+          🎂 Birthday soon
+          <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">
+            {birthdayCount}
+          </span>
+        </label>
       </div>
 
       {isLoading && <p className="text-slate-500">Loading customers…</p>}
       {error && <p className="text-red-600">{error.message}</p>}
 
       {!isLoading && !error && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <p className="mb-2 text-sm text-slate-500">
+          Showing <span className="font-medium text-slate-700">{pageStart + paged.length}</span> of{' '}
+          <span className="font-medium text-slate-700">{filtered.length}</span>
+          {filtered.length !== (customers?.length ?? 0) && ` (of ${customers?.length ?? 0} total)`}
+        </p>
+      )}
+
+      {!isLoading && !error && (
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
+            <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-500 shadow-sm">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Phone</th>
                 <th className="px-4 py-3 font-medium">DoB</th>
+                <th className="px-4 py-3 font-medium">Last visited</th>
                 <th className="px-4 py-3 font-medium">Points</th>
                 <th className="px-4 py-3 font-medium">Visits</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => {
+              {paged.map((c) => {
                 const eligible = isEligible(c.pointsBalance)
                 const bday = bdayStatus(c.birthday, c.birthdayRedeemedYear)
                 const badge = birthdayStatusBadge(bday)
@@ -149,6 +224,9 @@ export function CustomersList() {
                         </span>
                       )}
                     </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString() : '—'}
+                    </td>
                     <td className="px-4 py-3">
                       <span className="text-slate-600">{c.pointsBalance}</span>
                       {eligible && (
@@ -163,7 +241,7 @@ export function CustomersList() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                     No customers found.
                   </td>
                 </tr>
@@ -172,6 +250,65 @@ export function CustomersList() {
           </table>
         </div>
       )}
+
+      {!isLoading && !error && filtered.length > 0 && pageCount > 1 && (
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-1 text-sm">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={safePage === 0}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            ← Prev
+          </button>
+          {pageNumbers(safePage, pageCount).map((n, i) =>
+            n === ELLIPSIS ? (
+              <span key={`e${i}`} className="px-2 py-1.5 text-slate-400">
+                …
+              </span>
+            ) : (
+              <button
+                key={n}
+                onClick={() => setPage(n)}
+                aria-current={n === safePage ? 'page' : undefined}
+                className={
+                  'min-w-9 rounded-lg border px-3 py-1.5 font-medium ' +
+                  (n === safePage
+                    ? 'border-brand-600 bg-brand-600 text-white'
+                    : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50')
+                }
+              >
+                {n + 1}
+              </button>
+            ),
+          )}
+          <button
+            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+            disabled={safePage >= pageCount - 1}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   )
+}
+
+// Sentinel for a gap in the page list.
+const ELLIPSIS = -1
+
+// Build a compact page list around the current page: always the first and last
+// page, the current ±1, and ellipsis sentinels for the gaps. Zero-based indices.
+function pageNumbers(current: number, count: number): number[] {
+  const pages = new Set<number>([0, count - 1, current])
+  if (current - 1 > 0) pages.add(current - 1)
+  if (current + 1 < count - 1) pages.add(current + 1)
+  const sorted = [...pages].filter((n) => n >= 0 && n < count).sort((a, b) => a - b)
+
+  const out: number[] = []
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i] - sorted[i - 1] > 1) out.push(ELLIPSIS)
+    out.push(sorted[i])
+  }
+  return out
 }

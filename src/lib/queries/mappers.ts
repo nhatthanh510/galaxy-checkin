@@ -21,6 +21,8 @@ export function mapCustomer(row: CustomerRow): Customer {
     name: row.name,
     visitCount: row.visit_count,
     pointsBalance: row.points_balance,
+    lifetimePoints: row.lifetime_points ?? 0,
+    lastVisitAt: row.last_visit_at ?? null,
     birthday: row.birthday ?? null,
     birthdayRedeemedYear: row.birthday_redeemed_year ?? null,
     marketingConsent: row.marketing_consent ?? false,

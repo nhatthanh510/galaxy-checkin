@@ -22,6 +22,9 @@ interface PromotionsModalProps {
   promotions: Promotion[]
   // Update the flow customer after an action so eligibility recomputes.
   onCustomerChange: (patch: Partial<Customer>) => void
+  // Called when a POINTS reward is redeemed, so the flow can suppress this
+  // visit's +1 check-in point. Not called for birthday/standing claims.
+  onPointsRedeemed?: () => void
   onClose: () => void
 }
 
@@ -31,6 +34,7 @@ export function PromotionsModal({
   customer,
   promotions,
   onCustomerChange,
+  onPointsRedeemed,
   onClose,
 }: PromotionsModalProps) {
   const redeem = useRedeemPoints()
@@ -52,11 +56,13 @@ export function PromotionsModal({
       })
       // Points redeem updates the balance; a date-window claim marks the year so
       // it stops showing until next year.
-      onCustomerChange(
-        promo.stampsYear
-          ? { birthdayRedeemedYear: currentYear }
-          : { pointsBalance: result.pointsBalance },
-      )
+      if (promo.stampsYear) {
+        onCustomerChange({ birthdayRedeemedYear: currentYear })
+      } else {
+        onCustomerChange({ pointsBalance: result.pointsBalance })
+        // A points redeem means this visit's +1 check-in point is not earned.
+        onPointsRedeemed?.()
+      }
     } finally {
       setActingId(null)
     }

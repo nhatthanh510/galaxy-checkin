@@ -54,7 +54,7 @@ export function useEligiblePromotions(customer: Customer | null): Promotion[] {
         detail: reward,
         actionLabel: 'Claim',
       })
-    } else if (customer.pointsBalance >= p.pointsPerReward) {
+    } else if (p.pointsPerReward > 0 && customer.pointsBalance >= p.pointsPerReward) {
       promotions.push({
         id: `program-${p.id}`,
         programId: p.id,

@@ -225,11 +225,14 @@ function ProfileForm({ customer }: { customer: Customer }) {
     setSaved(true)
   }
 
-  // Points-triggered programs the customer currently has enough points for.
-  // Date-window (birthday) and standing promos aren't points-redeemable — the
-  // birthday claim has its own control below.
+  // Points-triggered programs the customer can redeem from admin. Admin requires
+  // the balance to be STRICTLY above the threshold (> N, not >= N): staff can't
+  // tell whether a point was earned on today's visit, so redeeming is only
+  // offered above the threshold. The kiosk uses >= N (reaching the kiosk redeem
+  // screen is itself a later check-in). Date-window/standing promos aren't
+  // points-redeemable — the birthday claim has its own control below.
   const eligiblePrograms = (programs ?? []).filter(
-    (p) => p.triggerType === 'points' && balance >= p.pointsPerReward,
+    (p) => p.triggerType === 'points' && balance > p.pointsPerReward,
   )
 
   const onRedeem = async (program: LoyaltyProgram) => {

@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
-import { useCreateCheckin } from '../../lib/queries'
+import { useCreateCheckin, useActiveLoyaltyPrograms } from '../../lib/queries'
+import { formatReward } from '../../lib/reward'
 import { useKioskFlow } from './useKioskFlow'
 
 const AUTO_RETURN_MS = 6000
+// Linger a bit longer when we're showing the "you can redeem next time" reminder
+// so the customer has time to read it.
+const AUTO_RETURN_WITH_REMINDER_MS = 9000
 
 type Status = 'submitting' | 'success' | 'error'
 
@@ -15,9 +19,20 @@ export function Success() {
   const navigate = useNavigate()
   const flow = useKioskFlow()
   const createCheckin = useCreateCheckin()
+  const { data: programs } = useActiveLoyaltyPrograms()
   const [status, setStatus] = useState<Status>('submitting')
   const [points, setPoints] = useState<number | null>(null)
   const submitted = useRef(false)
+
+  // "You can redeem" reminder: after check-in, if the balance still clears a
+  // points program's threshold, nudge the customer to redeem next visit. Pick the
+  // LOWEST threshold they qualify for so the reminder is always relevant.
+  const redeemableReward =
+    points == null
+      ? null
+      : (programs ?? [])
+          .filter((p) => p.triggerType === 'points' && p.pointsPerReward > 0 && points >= p.pointsPerReward)
+          .sort((a, b) => a.pointsPerReward - b.pointsPerReward)[0] ?? null
 
   const runCheckin = () => {
     createCheckin
@@ -28,6 +43,8 @@ export function Success() {
         serviceIds: flow.selectedServiceIds,
         birthday: flow.birthday,
         consent: flow.consent,
+        // Redeeming a points reward this visit means no +1 is earned.
+        awardPoint: !flow.pointsRedeemed,
       })
       .then((result) => {
         setPoints(result.customer.pointsBalance)
@@ -61,7 +78,7 @@ export function Success() {
     const t = setTimeout(() => {
       flow.reset()
       navigate('/', { replace: true })
-    }, AUTO_RETURN_MS)
+    }, redeemableReward ? AUTO_RETURN_WITH_REMINDER_MS : AUTO_RETURN_MS)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status])
@@ -86,10 +103,21 @@ export function Success() {
             <span className="text-7xl text-emerald-400">✓</span>
           </div>
           <h1 className="mt-8 text-4xl font-black tracking-wide">
-            You have checked in successfully!
+            {flow.pointsRedeemed ? 'Reward redeemed — enjoy!' : 'You have checked in successfully!'}
           </h1>
           {points !== null && (
-            <p className="mt-4 text-2xl text-white/70">You have {points} points</p>
+            <p className="mt-4 text-2xl text-white/70">
+              {flow.pointsRedeemed ? 'Your balance is now ' : 'You have '}
+              {points} points
+            </p>
+          )}
+          {redeemableReward && (
+            <div className="mt-6 rounded-2xl border border-brand-400/30 bg-brand-500/10 px-6 py-4">
+              <p className="text-xl font-semibold text-brand-200">
+                🎁 You have enough points for {formatReward(redeemableReward.rewardType, redeemableReward.rewardValue)}!
+              </p>
+              <p className="mt-1 text-base text-white/60">Redeem it on your next visit.</p>
+            </div>
           )}
           <p className="mt-10 text-base text-white/40">Returning to the start…</p>
         </>

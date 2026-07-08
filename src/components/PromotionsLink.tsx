@@ -29,6 +29,7 @@ export function PromotionsLink() {
           customer={customer}
           promotions={promotions}
           onCustomerChange={(patch) => flow.setCustomer({ ...customer, ...patch })}
+          onPointsRedeemed={() => flow.setPointsRedeemed(true)}
           onClose={() => setOpen(false)}
         />
       )}

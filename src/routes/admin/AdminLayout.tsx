@@ -17,7 +17,7 @@ export function AdminLayout() {
     (isActive ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100')
 
   return (
-    <div className="flex min-h-screen bg-slate-100 text-slate-800">
+    <div className="flex h-screen bg-slate-100 text-slate-800">
       <aside className="flex w-60 flex-col border-r border-slate-200 bg-white p-4">
         <div className="mb-6 flex flex-col gap-1 px-2">
           <img src="/logo.png" alt="Galaxy Nails" className="h-7 w-auto self-start" />
@@ -65,7 +65,7 @@ export function AdminLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto p-8">
+      <main className="flex min-h-0 flex-1 flex-col overflow-auto p-8">
         <Outlet />
       </main>
     </div>

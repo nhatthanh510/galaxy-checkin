@@ -7,7 +7,9 @@ export interface Customer {
   phone: string // primary lookup key, digits only
   name: string
   visitCount: number
-  pointsBalance: number
+  pointsBalance: number // current redeemable points
+  lifetimePoints: number // total points earned over history, before redemptions
+  lastVisitAt: string | null // ISO timestamp of most recent visit, or null
   birthday: string | null // "YYYY-MM-DD" or null
   birthdayRedeemedYear: number | null // year the birthday benefit was last claimed
   marketingConsent: boolean // opted in to marketing SMS
@@ -107,6 +109,9 @@ export interface CreateCheckinInput {
   serviceIds: string[]
   birthday: string | null // "YYYY-MM-DD" or null
   consent: boolean // marketing-contact consent (not required to check in)
+  // Award the +1 check-in point? False when the customer redeemed a points
+  // reward this visit (a redeemed visit doesn't earn). Defaults to true.
+  awardPoint?: boolean
 }
 
 // App-wide configurable settings (single row).
@@ -139,6 +144,8 @@ export interface CustomerRow {
   name: string
   visit_count: number
   points_balance: number
+  lifetime_points?: number
+  last_visit_at?: string | null
   birthday: string | null
   birthday_redeemed_year: number | null
   marketing_consent?: boolean

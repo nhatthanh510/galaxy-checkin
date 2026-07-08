@@ -3,15 +3,22 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useCustomers, useUpsertCustomers, type ImportCustomer } from '../../lib/queries'
 import { CSV_HEADERS, parseCsv } from '../../lib/csv'
 import { normalizePhone } from '../../lib/phone'
+import { formatBirthday } from '../../lib/birthday'
 
 interface PreviewRow {
   row: ImportCustomer
   status: 'new' | 'update' | 'error'
   error?: string
+  // Non-blocking notice (e.g. phone isn't a valid AU mobile). The row still
+  // imports; the warning just flags it for staff to review afterwards.
+  warning?: string
 }
 
 // Parse + validate CSV rows against the known header order, flagging each row as
-// new / update (matched by phone) / error.
+// new / update (matched by phone) / error. A bad phone is a *warning*, not an
+// error — the row still imports. The `customer.phone` column is only NOT NULL +
+// UNIQUE (no length/format CHECK), so a non-standard phone is accepted; only the
+// kiosk's create_checkin RPC enforces AU-mobile shape, which import doesn't use.
 function buildPreview(text: string, existingPhones: Set<string>): PreviewRow[] {
   const rows = parseCsv(text)
   if (rows.length === 0) return []
@@ -20,16 +27,32 @@ function buildPreview(text: string, existingPhones: Set<string>): PreviewRow[] {
   const start = rows[0][0]?.trim().toLowerCase() === CSV_HEADERS[0] ? 1 : 0
 
   return rows.slice(start).map((cells): PreviewRow => {
-    const [rawPhone = '', name = '', points = '0', visits = '0'] = cells
+    const [
+      rawPhone = '',
+      name = '',
+      points = '0',
+      visits = '0',
+      lifetime = '',
+      rawBirthday = '',
+      rawConsent = '',
+      rawLastVisited = '',
+    ] = cells
     const phone = normalizePhone(rawPhone)
 
-    if (phone.length !== 10) {
+    // A phone is still required as the dedupe key, but it may be any non-empty
+    // digit string. A non-standard one imports with a warning rather than being
+    // skipped.
+    if (phone.length === 0) {
       return {
         status: 'error',
-        error: `Invalid phone "${rawPhone}"`,
+        error: `Missing/invalid phone "${rawPhone}"`,
         row: { phone, name: name.trim(), pointsBalance: 0, visitCount: 0 },
       }
     }
+    const phoneWarning =
+      phone.length !== 10 || !phone.startsWith('04')
+        ? `Phone "${rawPhone}" is not a valid AU mobile — review after import`
+        : undefined
     if (!name.trim()) {
       return {
         status: 'error',
@@ -48,11 +71,87 @@ function buildPreview(text: string, existingPhones: Set<string>): PreviewRow[] {
       }
     }
 
+    // Optional trailing columns. Empty cells mean "leave column unset" (omitted
+    // from the payload), not zero/null.
+    let lifetimePoints: number | undefined
+    if (lifetime.trim() !== '') {
+      lifetimePoints = Number(lifetime)
+      if (Number.isNaN(lifetimePoints)) {
+        return {
+          status: 'error',
+          error: 'Lifetime points must be a number',
+          row: { phone, name: name.trim(), pointsBalance, visitCount },
+        }
+      }
+    }
+
+    const birthday = parseBirthday(rawBirthday)
+    if (birthday === INVALID) {
+      return {
+        status: 'error',
+        error: `Invalid birthday "${rawBirthday}" (use YYYY-MM-DD)`,
+        row: { phone, name: name.trim(), pointsBalance, visitCount, lifetimePoints },
+      }
+    }
+
+    const marketingConsent = parseConsent(rawConsent)
+
+    const lastVisited = parseTimestamp(rawLastVisited)
+    if (lastVisited === INVALID) {
+      return {
+        status: 'error',
+        error: `Invalid last visited "${rawLastVisited}"`,
+        row: { phone, name: name.trim(), pointsBalance, visitCount, lifetimePoints, birthday, marketingConsent },
+      }
+    }
+
     return {
       status: existingPhones.has(phone) ? 'update' : 'new',
-      row: { phone, name: name.trim(), pointsBalance, visitCount },
+      warning: phoneWarning,
+      row: {
+        phone,
+        name: name.trim(),
+        pointsBalance,
+        visitCount,
+        lifetimePoints,
+        birthday,
+        marketingConsent,
+        lastVisited,
+      },
     }
   })
+}
+
+// Sentinel: a cell was present but couldn't be parsed. `undefined` means
+// "no column / empty cell" (leave untouched); a string is a valid value.
+const INVALID = Symbol('invalid-cell')
+
+// Accept an ISO 8601 timestamp (e.g. "2026-07-06T17:15:00"). Empty => undefined.
+function parseTimestamp(raw: string): string | undefined | typeof INVALID {
+  const s = raw.trim()
+  if (s === '') return undefined
+  const ms = Date.parse(s)
+  if (Number.isNaN(ms)) return INVALID
+  return new Date(ms).toISOString()
+}
+
+// Accept "YYYY-MM-DD" (only day+month matter downstream). Empty => undefined.
+function parseBirthday(raw: string): string | null | undefined | typeof INVALID {
+  const s = raw.trim()
+  if (s === '') return undefined
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (!m) return INVALID
+  const month = Number(m[2])
+  const day = Number(m[3])
+  if (month < 1 || month > 12 || day < 1 || day > 31) return INVALID
+  return s
+}
+
+// Accept 1/0, true/false, yes/no (case-insensitive). Empty => undefined.
+function parseConsent(raw: string): boolean | undefined {
+  const s = raw.trim().toLowerCase()
+  if (s === '') return undefined
+  return s === '1' || s === 'true' || s === 'yes' || s === 'y'
 }
 
 export function CustomerImport() {
@@ -79,6 +178,7 @@ export function CustomerImport() {
   const errors = (preview ?? []).filter((p) => p.status === 'error')
   const newCount = valid.filter((p) => p.status === 'new').length
   const updateCount = valid.filter((p) => p.status === 'update').length
+  const warnCount = valid.filter((p) => p.warning).length
 
   const onConfirm = async () => {
     await upsert.mutateAsync(valid.map((p) => p.row))
@@ -113,6 +213,11 @@ export function CustomerImport() {
             <span className="rounded-full bg-blue-100 px-3 py-1 text-blue-700">
               {updateCount} update
             </span>
+            {warnCount > 0 && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-700">
+                {warnCount} warnings (imported)
+              </span>
+            )}
             {errors.length > 0 && (
               <span className="rounded-full bg-red-100 px-3 py-1 text-red-700">
                 {errors.length} errors (skipped)
@@ -129,6 +234,10 @@ export function CustomerImport() {
                   <th className="px-4 py-2 font-medium">Name</th>
                   <th className="px-4 py-2 font-medium">Points</th>
                   <th className="px-4 py-2 font-medium">Visits</th>
+                  <th className="px-4 py-2 font-medium">Lifetime</th>
+                  <th className="px-4 py-2 font-medium">Birthday</th>
+                  <th className="px-4 py-2 font-medium">SMS</th>
+                  <th className="px-4 py-2 font-medium">Last visited</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,10 +246,23 @@ export function CustomerImport() {
                     <td className="px-4 py-2">
                       <StatusBadge status={p.status} error={p.error} />
                     </td>
-                    <td className="px-4 py-2 text-slate-600">{p.row.phone || '—'}</td>
+                    <td className="px-4 py-2 text-slate-600">
+                      <span className={p.warning ? 'text-amber-700' : undefined} title={p.warning}>
+                        {p.row.phone || '—'}
+                      </span>
+                      {p.warning && <span className="ml-1" title={p.warning}>⚠️</span>}
+                    </td>
                     <td className="px-4 py-2 text-slate-600">{p.row.name || '—'}</td>
                     <td className="px-4 py-2 text-slate-600">{p.row.pointsBalance}</td>
                     <td className="px-4 py-2 text-slate-600">{p.row.visitCount}</td>
+                    <td className="px-4 py-2 text-slate-600">{p.row.lifetimePoints ?? '—'}</td>
+                    <td className="px-4 py-2 text-slate-600">{formatBirthday(p.row.birthday ?? null)}</td>
+                    <td className="px-4 py-2 text-slate-600">
+                      {p.row.marketingConsent === undefined ? '—' : p.row.marketingConsent ? 'Yes' : 'No'}
+                    </td>
+                    <td className="px-4 py-2 text-slate-600">
+                      {p.row.lastVisited ? new Date(p.row.lastVisited).toLocaleDateString() : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

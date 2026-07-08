@@ -13,6 +13,10 @@ export interface FlowState {
   consent: boolean // marketing-contact consent
   customer: Customer | null // matched known customer, else null
   selectedServiceIds: string[]
+  // True once the customer redeemed a POINTS reward on the reward step. When set,
+  // the check-in must NOT award its +1 point (a redeemed visit doesn't earn).
+  // Non-points claims (birthday) don't set this.
+  pointsRedeemed: boolean
 }
 
 export interface FlowContextValue extends FlowState {
@@ -22,6 +26,7 @@ export interface FlowContextValue extends FlowState {
   setConsent: (consent: boolean) => void
   setCustomer: (customer: Customer | null) => void
   toggleService: (serviceId: string) => void
+  setPointsRedeemed: (redeemed: boolean) => void
   reset: () => void
 }
 

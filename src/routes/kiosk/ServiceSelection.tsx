@@ -4,8 +4,8 @@ import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
 import { ServiceRow } from '../../components/ServiceRow'
 import { BackButton } from '../../components/BackButton'
-import { InlineRewards } from '../../components/InlineRewards'
 import { useServices, useServiceGroups } from '../../lib/queries'
+import { useEligiblePromotions } from '../../lib/useEligiblePromotions'
 import type { Service, ServiceGroup } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
 
@@ -27,11 +27,16 @@ export function ServiceSelection() {
   const customer = flow.customer
   const noServices = !isLoading && (services ?? []).length === 0
 
-  const goNext = () => navigate('/kiosk/success')
+  // If the customer has any eligible reward, show the reward step next; otherwise
+  // go straight to success. (Redeeming happens before check-in so a points redeem
+  // can suppress this visit's +1.)
+  const promotions = useEligiblePromotions(customer)
+  const goNext = () =>
+    navigate(promotions.length > 0 ? '/kiosk/reward' : '/kiosk/success')
 
   return (
     <KioskLayout>
-      <div className="mx-auto w-full max-w-3xl flex-1">
+      <div className="mx-auto flex h-full w-full max-w-6xl flex-col">
         {customer && (
           <div className="mb-6">
             <p className="text-2xl font-semibold text-white">
@@ -42,11 +47,6 @@ export function ServiceSelection() {
               <span className="font-bold text-brand-300">{customer.pointsBalance}</span>{' '}
               {customer.pointsBalance === 1 ? 'point' : 'points'}.
             </p>
-            {/* Eligible rewards shown in-context — redeem/claim right here. */}
-            <InlineRewards
-              customer={customer}
-              onCustomerChange={(patch) => flow.setCustomer({ ...customer, ...patch })}
-            />
           </div>
         )}
 
@@ -64,7 +64,10 @@ export function ServiceSelection() {
           </p>
         )}
 
-        <div className="mt-6 space-y-8">
+        {/* Scrollable service list — only this region scrolls, so the title and
+            SKIP/NEXT stay put on the long menu. Horizontal padding gives the
+            selected chips' ring room so it isn't clipped by overflow. */}
+        <div className="mt-6 min-h-0 flex-1 space-y-8 overflow-y-auto px-1 py-1">
           {grouped.map(({ groupName, items }) => (
             <div key={groupName}>
               <h2 className="mb-3 text-xl font-bold text-brand-300">{groupName}</h2>
@@ -83,7 +86,7 @@ export function ServiceSelection() {
         </div>
 
         {/* SKIP continues with no service; NEXT requires at least one selected. */}
-        <div className="mt-10 flex gap-4">
+        <div className="mt-6 flex gap-4">
           <NextButton variant="ghost" onClick={goNext} className="flex-1">
             SKIP
           </NextButton>

@@ -44,7 +44,7 @@ export function KioskLayout({
   }
 
   return (
-    <div className="min-h-full flex flex-col bg-[#0b0b12] text-white">
+    <div className="h-full min-h-0 flex flex-col bg-[#0b0b12] text-white">
       <header className="flex items-center justify-between px-8 py-5">
         {/* Logo sits on a light chip so the dark-brown mark stays readable on
             the near-black kiosk header. */}
@@ -81,7 +81,7 @@ export function KioskLayout({
           </button>
         </div>
       </header>
-      <main className="flex-1 flex flex-col px-8 pb-10">{children}</main>
+      <main className="min-h-0 flex-1 flex flex-col px-8 pb-10">{children}</main>
     </div>
   )
 }
