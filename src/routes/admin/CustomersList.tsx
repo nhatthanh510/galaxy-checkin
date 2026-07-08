@@ -8,6 +8,7 @@ import {
   birthdayStatusBadge,
   formatBirthday,
 } from '../../lib/birthday'
+import { customerTier, tierBadge } from '../../lib/tier'
 
 export function CustomersList() {
   const { data: customers, isLoading, error } = useCustomers()
@@ -186,6 +187,7 @@ export function CustomersList() {
                 <th className="px-4 py-3 font-medium">DoB</th>
                 <th className="px-4 py-3 font-medium">Last visited</th>
                 <th className="px-4 py-3 font-medium">Points</th>
+                <th className="px-4 py-3 font-medium">Lifetime points</th>
                 <th className="px-4 py-3 font-medium">Visits</th>
               </tr>
             </thead>
@@ -196,6 +198,8 @@ export function CustomersList() {
                 const badge = birthdayStatusBadge(bday)
                 // Highlight the row while an unclaimed birthday is in-window.
                 const bdayActive = bday !== 'none' && bday !== 'claimed'
+                const tier = customerTier(c.lifetimePoints)
+                const tBadge = tier ? tierBadge(tier) : null
                 return (
                   <tr
                     key={c.id}
@@ -212,6 +216,13 @@ export function CustomersList() {
                       <Link to={`/admin/customers/${c.id}`} className="font-medium text-brand-700 hover:underline">
                         {c.name}
                       </Link>
+                      {tBadge && (
+                        <span
+                          className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${tBadge.className}`}
+                        >
+                          {tBadge.label}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-slate-600">{formatPhone(c.phone)}</td>
                     <td className="px-4 py-3">
@@ -235,13 +246,14 @@ export function CustomersList() {
                         </span>
                       )}
                     </td>
+                    <td className="px-4 py-3 text-slate-600">{c.lifetimePoints}</td>
                     <td className="px-4 py-3 text-slate-600">{c.visitCount}</td>
                   </tr>
                 )
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                     No customers found.
                   </td>
                 </tr>

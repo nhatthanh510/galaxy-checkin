@@ -16,6 +16,7 @@ import type {
 } from '../../types'
 import { formatPhone } from '../../lib/phone'
 import { formatReward } from '../../lib/reward'
+import { customerTier, tierBadge } from '../../lib/tier'
 import { Pagination } from '../../components/Pagination'
 import { usePagination } from '../../components/usePagination'
 import {
@@ -40,6 +41,8 @@ export function CustomerDetail() {
   if (!data) return null
 
   const { customer, checkins, transactions } = data
+  const tier = customerTier(customer.lifetimePoints)
+  const detailTier = tier ? tierBadge(tier) : null
   const bdayBadge = settings
     ? birthdayStatusBadge(
         birthdayStatus(
@@ -60,6 +63,13 @@ export function CustomerDetail() {
 
       <div className="mt-2 flex items-center gap-3">
         <h1 className="text-2xl font-bold">{customer.name}</h1>
+        {detailTier && (
+          <span
+            className={`rounded-full px-3 py-1 text-sm font-medium ${detailTier.className}`}
+          >
+            {detailTier.label}
+          </span>
+        )}
         {bdayBadge && (
           <span
             className={`rounded-full px-3 py-1 text-sm font-medium ${bdayBadge.className}`}
@@ -269,6 +279,13 @@ function ProfileForm({ customer }: { customer: Customer }) {
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
           />
         </label>
+        <div className="block">
+          <span className="text-sm font-medium text-slate-600">Lifetime points</span>
+          <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+            {customer.lifetimePoints}
+            <span className="ml-1 text-xs text-slate-400">(total earned, not editable)</span>
+          </p>
+        </div>
       </div>
       <div className="mt-4">
         <span className="text-sm font-medium text-slate-600">
