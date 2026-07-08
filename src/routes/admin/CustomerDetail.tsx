@@ -196,6 +196,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
   const claimBirthday = useClaimBirthday()
   const [name, setName] = useState(customer.name)
   const [points, setPoints] = useState(String(customer.pointsBalance))
+  const [lifetimePoints, setLifetimePoints] = useState(String(customer.lifetimePoints))
   const [birthday, setBirthday] = useState(dateStringToParts(customer.birthday))
   const [saved, setSaved] = useState(false)
   const [redeemedMsg, setRedeemedMsg] = useState<string | null>(null)
@@ -228,10 +229,12 @@ function ProfileForm({ customer }: { customer: Customer }) {
       name: name.trim(),
       pointsBalance: Number(points) || 0,
       birthday: partsToDateString(birthday),
+      lifetimePoints: Number(lifetimePoints) || 0,
     })
-    // Reflect the saved balance so the redeemable-rewards section recomputes.
+    // Reflect the saved values so the section recomputes.
     setBalance(updated.pointsBalance)
     setPoints(String(updated.pointsBalance))
+    setLifetimePoints(String(updated.lifetimePoints))
     setSaved(true)
   }
 
@@ -279,13 +282,16 @@ function ProfileForm({ customer }: { customer: Customer }) {
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
           />
         </label>
-        <div className="block">
+        <label className="block">
           <span className="text-sm font-medium text-slate-600">Lifetime points</span>
-          <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
-            {customer.lifetimePoints}
-            <span className="ml-1 text-xs text-slate-400">(total earned, not editable)</span>
-          </p>
-        </div>
+          <input
+            type="number"
+            value={lifetimePoints}
+            onChange={(e) => setLifetimePoints(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+          />
+          <span className="mt-1 block text-xs text-slate-400">Total earned (drives tier).</span>
+        </label>
       </div>
       <div className="mt-4">
         <span className="text-sm font-medium text-slate-600">

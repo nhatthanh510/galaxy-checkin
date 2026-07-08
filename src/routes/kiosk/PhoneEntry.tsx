@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Keypad } from '../../components/Keypad'
 import { LoyaltyCarousel } from '../../components/LoyaltyCarousel'
@@ -55,6 +55,37 @@ export function PhoneEntry() {
       setForcePrompted(true)
     }
   }
+
+  // Physical keyboard support: number keys type digits, Backspace/Delete removes
+  // the last one, Enter submits, Escape clears. Mirrors the on-screen Keypad so a
+  // USB/Bluetooth keyboard works alongside the tablet's touch keypad.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Ignore when typing into a field or when a modifier is held.
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault()
+        onDigit(e.key)
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        onDelete()
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        void onNext()
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        onClear()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+    // Re-bind when the values the handlers close over change, so onNext sees the
+    // current digits/valid/forcePrompted state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [digits, complete, valid, forcePrompted, lookup.isPending])
 
   return (
     // First step: no back arrow, and it drives its own rewards prompt so the
