@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Keypad } from '../../components/Keypad'
 import { LoyaltyCarousel } from '../../components/LoyaltyCarousel'
@@ -17,6 +17,16 @@ export function PhoneEntry() {
   const flow = useKioskFlow()
   const { data: activePrograms } = useActiveLoyaltyPrograms()
   const lookup = useCustomerLookup()
+
+  // Show points programs first in the carousel (birthday/standing promos after),
+  // keeping the query's name order within each group.
+  const carouselPrograms = useMemo(
+    () =>
+      [...(activePrograms ?? [])].sort(
+        (a, b) => Number(b.triggerType === 'points') - Number(a.triggerType === 'points'),
+      ),
+    [activePrograms],
+  )
   // Set once the user has tried to submit an invalid number, so the button
   // switches to "Continue anyway" (force-process).
   const [forcePrompted, setForcePrompted] = useState(false)
@@ -94,7 +104,7 @@ export function PhoneEntry() {
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-10 lg:grid-cols-2">
         {/* Left: loyalty program info card, always visible. */}
         <div className="order-2 lg:order-1">
-          <LoyaltyCarousel programs={activePrograms ?? []} />
+          <LoyaltyCarousel programs={carouselPrograms} />
         </div>
 
         {/* Right: keypad + entry. */}
