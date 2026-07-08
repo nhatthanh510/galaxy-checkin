@@ -72,7 +72,7 @@ export function Marketing() {
   if (custLoading || tplLoading) return <p className="text-slate-500">Loading…</p>
 
   return (
-    <div className="max-w-4xl">
+    <div className="min-w-0 max-w-4xl">
       <h1 className="text-2xl font-bold">Marketing SMS</h1>
       <p className="mt-1 text-sm text-slate-500">
         Send a template to opted-in customers. {nonConsentedCount > 0 && (

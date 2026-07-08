@@ -34,7 +34,7 @@ export function ServicesManage() {
   }
 
   return (
-    <div className="max-w-5xl">
+    <div className="min-w-0 max-w-5xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Services{total > 0 && ` (${total})`}</h1>
@@ -56,7 +56,7 @@ export function ServicesManage() {
             <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-500 shadow-sm">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Category</th>
+                <th className="hidden px-4 py-3 font-medium sm:table-cell">Category</th>
                 <th className="px-4 py-3 font-medium">Active</th>
                 <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
@@ -96,9 +96,13 @@ function ServiceRow({ service, onEdit }: { service: Service; onEdit: () => void 
   }
   return (
     <tr className="border-b border-slate-100 last:border-0">
-      <td className="px-4 py-3 font-medium text-slate-800">{service.name}</td>
-      <td className="px-4 py-3 text-slate-600">{service.category}</td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 align-top font-medium text-slate-800">
+        {service.name}
+        {/* Mobile: category under the name (own column hidden). */}
+        <div className="text-xs font-normal text-slate-400 sm:hidden">{service.category}</div>
+      </td>
+      <td className="hidden px-4 py-3 align-top text-slate-600 sm:table-cell">{service.category}</td>
+      <td className="px-4 py-3 align-top">
         <ActiveBadge active={service.active} />
       </td>
       <td className="px-4 py-3 text-right">

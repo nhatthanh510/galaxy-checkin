@@ -37,8 +37,8 @@ export function SmsTemplates() {
     return <TemplateForm template={mode.template} onDone={() => setMode({ kind: 'list' })} />
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="min-w-0 max-w-3xl">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">SMS templates</h1>
           <p className="mt-1 text-sm text-slate-500">
@@ -54,13 +54,13 @@ export function SmsTemplates() {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Type</th>
-              <th className="px-4 py-3 font-medium">Preview</th>
+              <th className="hidden px-4 py-3 font-medium sm:table-cell">Type</th>
+              <th className="hidden px-4 py-3 font-medium md:table-cell">Preview</th>
               <th className="px-4 py-3 font-medium text-right">Actions</th>
             </tr>
           </thead>
@@ -89,9 +89,16 @@ function TemplateRow({ template, onEdit }: { template: SmsTemplate; onEdit: () =
   }
   return (
     <tr className="border-b border-slate-100 last:border-0 align-top">
-      <td className="px-4 py-3 font-medium text-slate-700">{template.name}</td>
-      <td className="px-4 py-3 text-slate-600">{KIND_LABELS[template.kind]}</td>
-      <td className="px-4 py-3 text-slate-500">
+      <td className="px-4 py-3 font-medium text-slate-700">
+        {template.name}
+        {/* Mobile: type + preview under the name (own columns hidden). */}
+        <div className="mt-1 space-y-0.5 text-xs font-normal text-slate-400 md:hidden">
+          <div className="sm:hidden">{KIND_LABELS[template.kind]}</div>
+          <div className="line-clamp-2">{renderTemplate(template.body, PREVIEW_VALUES)}</div>
+        </div>
+      </td>
+      <td className="hidden px-4 py-3 text-slate-600 sm:table-cell">{KIND_LABELS[template.kind]}</td>
+      <td className="hidden px-4 py-3 text-slate-500 md:table-cell">
         {renderTemplate(template.body, PREVIEW_VALUES)}
       </td>
       <td className="px-4 py-3 text-right whitespace-nowrap">

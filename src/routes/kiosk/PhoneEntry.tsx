@@ -101,7 +101,7 @@ export function PhoneEntry() {
     // First step: no back arrow, and it drives its own rewards prompt so the
     // shared header link/banner is suppressed here.
     <KioskLayout showStartOver={false} showPromotions={false}>
-      <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-10 lg:grid-cols-2">
+      <div className="mx-auto grid w-full max-w-6xl min-h-0 flex-1 grid-cols-1 items-start gap-6 overflow-y-auto py-4 lg:grid-cols-2 lg:items-center lg:gap-10 lg:overflow-visible lg:py-0">
         {/* Left: loyalty program info card, always visible. */}
         <div className="order-2 lg:order-1">
           <LoyaltyCarousel programs={carouselPrograms} />

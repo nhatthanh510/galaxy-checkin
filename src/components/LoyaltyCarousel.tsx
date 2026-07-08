@@ -24,7 +24,7 @@ export function LoyaltyCarousel({ programs }: { programs: LoyaltyProgram[] }) {
             type="button"
             onClick={() => go(-1)}
             aria-label="Previous promotion"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/5 text-2xl text-white/80 hover:bg-white/15"
+            className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/5 text-2xl text-white/80 hover:bg-white/15 sm:flex"
           >
             ‹
           </button>
@@ -37,7 +37,7 @@ export function LoyaltyCarousel({ programs }: { programs: LoyaltyProgram[] }) {
             type="button"
             onClick={() => go(1)}
             aria-label="Next promotion"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/5 text-2xl text-white/80 hover:bg-white/15"
+            className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/5 text-2xl text-white/80 hover:bg-white/15 sm:flex"
           >
             ›
           </button>

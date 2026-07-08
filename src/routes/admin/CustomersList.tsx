@@ -102,8 +102,8 @@ export function CustomersList() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="flex h-full min-w-0 flex-col">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Customers</h1>
         <div className="flex gap-2">
           <Link
@@ -178,16 +178,16 @@ export function CustomersList() {
       )}
 
       {!isLoading && !error && (
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm">
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 bg-white">
+          <table className="w-full text-left text-sm lg:min-w-[720px]">
             <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-500 shadow-sm">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Phone</th>
-                <th className="px-4 py-3 font-medium">DoB</th>
-                <th className="px-4 py-3 font-medium">Last visited</th>
+                <th className="hidden px-4 py-3 font-medium lg:table-cell">Phone</th>
+                <th className="hidden px-4 py-3 font-medium lg:table-cell">DoB</th>
+                <th className="hidden px-4 py-3 font-medium lg:table-cell">Last visited</th>
                 <th className="px-4 py-3 font-medium">Points</th>
-                <th className="px-4 py-3 font-medium">Lifetime points</th>
+                <th className="hidden px-4 py-3 font-medium lg:table-cell">Lifetime points</th>
                 <th className="px-4 py-3 font-medium">Visits</th>
               </tr>
             </thead>
@@ -212,7 +212,7 @@ export function CustomersList() {
                           : 'hover:bg-slate-50')
                     }
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 align-top">
                       <Link to={`/admin/customers/${c.id}`} className="font-medium text-brand-700 hover:underline">
                         {c.name}
                       </Link>
@@ -223,9 +223,23 @@ export function CustomersList() {
                           {tBadge.label}
                         </span>
                       )}
+                      {/* Consolidated (below lg): phone + DoB stacked under the name. */}
+                      <div className="mt-1 space-y-0.5 text-xs text-slate-500 lg:hidden">
+                        <div>{formatPhone(c.phone)}</div>
+                        <div className="flex items-center gap-1">
+                          <span>🎂 {formatBirthday(c.birthday)}</span>
+                          {badge && (
+                            <span
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${badge.className}`}
+                            >
+                              {badge.label}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{formatPhone(c.phone)}</td>
-                    <td className="px-4 py-3">
+                    <td className="hidden px-4 py-3 align-top text-slate-600 lg:table-cell">{formatPhone(c.phone)}</td>
+                    <td className="hidden px-4 py-3 align-top lg:table-cell">
                       <span className="text-slate-600">{formatBirthday(c.birthday)}</span>
                       {badge && (
                         <span
@@ -235,19 +249,52 @@ export function CustomersList() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
+                    <td className="hidden px-4 py-3 align-top text-slate-600 lg:table-cell">
                       {c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString() : '—'}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="text-slate-600">{c.pointsBalance}</span>
+                    <td className="px-4 py-3 align-top">
+                      {/* Desktop (lg+): just the current balance (Lifetime is its own column). */}
+                      <span className="hidden text-slate-600 lg:inline">{c.pointsBalance}</span>
                       {eligible && (
-                        <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                        <span className="ml-2 hidden rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 lg:inline-block">
                           🎁 Redeemable
                         </span>
                       )}
+                      {/* Consolidated (below lg): current + lifetime, each labelled. */}
+                      <div className="space-y-0.5 text-xs lg:hidden">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-600">
+                            <span className="text-slate-400">Current </span>
+                            {c.pointsBalance}
+                          </span>
+                          {eligible && (
+                            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                              🎁
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-slate-600">
+                          <span className="text-slate-400">Lifetime </span>
+                          {c.lifetimePoints}
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{c.lifetimePoints}</td>
-                    <td className="px-4 py-3 text-slate-600">{c.visitCount}</td>
+                    <td className="hidden px-4 py-3 align-top text-slate-600 lg:table-cell">{c.lifetimePoints}</td>
+                    <td className="px-4 py-3 align-top text-slate-600">
+                      {/* Desktop: just the visit count (Last visited is its own column at lg+). */}
+                      <span className="hidden lg:inline">{c.visitCount}</span>
+                      {/* Mobile/tablet: count + last visited, each labelled. */}
+                      <div className="space-y-0.5 text-xs lg:hidden">
+                        <div>
+                          <span className="text-slate-400">Count </span>
+                          {c.visitCount}
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Last visited </span>
+                          {c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString() : '—'}
+                        </div>
+                      </div>
+                    </td>
                   </tr>
                 )
               })}
