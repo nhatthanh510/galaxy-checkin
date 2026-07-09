@@ -61,7 +61,7 @@ export function NameEntry() {
             🎂 Add your birthday for a special birthday discount!
           </p>
           <p className="mb-4 mt-1 text-base text-pink-100/70">
-            Optional — we'll text you a treat around your birthday.
+            Optional — we may have a little something for you around your birthday.
           </p>
           <BirthdayDropdowns
             value={birthdayParts}

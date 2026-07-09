@@ -116,14 +116,33 @@ export function Success() {
           <h1 className="mt-8 text-4xl font-black tracking-wide">
             {flow.pointsRedeemed ? 'Reward redeemed — enjoy!' : 'You have checked in successfully!'}
           </h1>
-          {name && (
-            <p className="mt-3 text-3xl font-semibold text-white">Thanks, {name}!</p>
-          )}
-          {points !== null && (
-            <p className="mt-4 text-2xl text-white/70">
-              {flow.pointsRedeemed ? 'Your balance is now ' : 'You have '}
-              {points} points
-            </p>
+
+          {/* Prominent customer card: name + current points balance, front and
+              centre so the customer can confirm both at a glance. */}
+          {(name || points !== null) && (
+            <div className="mt-8 w-full max-w-md rounded-3xl border border-brand-400/40 bg-brand-500/10 px-8 py-6 shadow-lg shadow-brand-500/10">
+              {name && (
+                <div className="flex items-center justify-center gap-4">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-2xl font-black text-white">
+                    {name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="text-3xl font-bold text-white">{name}</span>
+                </div>
+              )}
+              {points !== null && (
+                <div className="mt-5 flex items-baseline justify-center gap-2">
+                  <span className="text-5xl font-black text-brand-200">{points}</span>
+                  <span className="text-2xl font-semibold text-white/70">
+                    {points === 1 ? 'point' : 'points'}
+                  </span>
+                </div>
+              )}
+              {points !== null && (
+                <p className="mt-1 text-center text-base text-white/50">
+                  {flow.pointsRedeemed ? 'Your new balance' : 'Your points balance'}
+                </p>
+              )}
+            </div>
           )}
           {redeemableReward && (
             <div className="mt-6 rounded-2xl border border-brand-400/30 bg-brand-500/10 px-6 py-4">

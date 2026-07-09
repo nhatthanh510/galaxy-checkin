@@ -5,7 +5,8 @@ import type {
   CreateCheckinRpcRow,
 } from '../../types'
 import { getSupabase } from '../supabase'
-import { queueNotification } from '../notifications'
+// Check-in confirmation SMS temporarily disabled (see below).
+// import { queueNotification } from '../notifications'
 import { startOfLocalDayISO } from '../day'
 
 // Raised when create_checkin rejects a second visit on the same salon-local day.
@@ -72,15 +73,15 @@ export function useCreateCheckin() {
         },
       }
 
-      // Fire the check-in confirmation SMS via ClickSend (non-blocking /
-      // non-throwing; degrades to a logged 'stubbed' record without creds).
-      await queueNotification({
-        customerId: row.customer_id,
-        checkinId: row.checkin_id,
-        toAddress: input.phone,
-        template: 'checkin_confirmation',
-        payload: { name: row.customer_name },
-      })
+      // Check-in confirmation SMS temporarily disabled — the salon isn't sending
+      // check-in texts yet. Re-enable by uncommenting when SMS goes live.
+      // await queueNotification({
+      //   customerId: row.customer_id,
+      //   checkinId: row.checkin_id,
+      //   toAddress: input.phone,
+      //   template: 'checkin_confirmation',
+      //   payload: { name: row.customer_name },
+      // })
 
       return result
     },
