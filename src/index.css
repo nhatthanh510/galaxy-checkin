@@ -1,5 +1,11 @@
 @import 'tailwindcss';
 
+/* Short-desktop: a wide-but-short viewport (e.g. a 14" laptop), where the kiosk
+   uses the side-by-side layout but the height is tight. Used ONLY to shrink the
+   phone-entry keypad/spacing so it fits without scrolling — tablets and phones
+   (which are tall or use the stacked layout) are unaffected. */
+@custom-variant short-desktop (@media (min-width: 1024px) and (max-height: 900px));
+
 /* Brand palette — a brown ramp derived from the Galaxy Nails logo
    (dark brown #603010, tan #a07050). Replaces the old purple accent.
    Tailwind v4 generates bg-brand-*, text-brand-*, ring-brand-*, etc. */

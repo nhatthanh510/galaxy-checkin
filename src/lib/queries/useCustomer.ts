@@ -103,3 +103,21 @@ export function useUpdateCustomer() {
     },
   })
 }
+
+// Admin: permanently delete a customer. RLS ("admin manages customer", FOR ALL)
+// already authorizes this for admins. The DB cascades remove the customer's
+// check-ins and loyalty transactions, and null out notification references
+// (see the FK definitions in 0001_init.sql) — the confirm dialog warns about it.
+export function useDeleteCustomer() {
+  const qc = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      const { error } = await getSupabase().from('customer').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: (_data, id) => {
+      qc.removeQueries({ queryKey: ['customer', id] })
+      qc.invalidateQueries({ queryKey: customersKey })
+    },
+  })
+}

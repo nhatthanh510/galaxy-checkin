@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
-import { useCreateCheckin, useActiveLoyaltyPrograms } from '../../lib/queries'
+import {
+  useCreateCheckin,
+  useActiveLoyaltyPrograms,
+  AlreadyCheckedInTodayError,
+} from '../../lib/queries'
 import { formatReward } from '../../lib/reward'
 import { useKioskFlow } from './useKioskFlow'
 
@@ -10,7 +14,7 @@ const AUTO_RETURN_MS = 6000
 // so the customer has time to read it.
 const AUTO_RETURN_WITH_REMINDER_MS = 9000
 
-type Status = 'submitting' | 'success' | 'error'
+type Status = 'submitting' | 'success' | 'already' | 'error'
 
 // Step 5: confirmation. Creates the checkin (status `waiting`) on mount. On
 // success, shows the confirmation + points and auto-returns to the phone screen.
@@ -22,6 +26,9 @@ export function Success() {
   const { data: programs } = useActiveLoyaltyPrograms()
   const [status, setStatus] = useState<Status>('submitting')
   const [points, setPoints] = useState<number | null>(null)
+  // Name to echo back on the confirmation so the customer can double-check it.
+  // Prefer the flow's known/entered name; the RPC's returned name backs it up.
+  const [name, setName] = useState<string | null>(flow.customer?.name ?? flow.name ?? null)
   const submitted = useRef(false)
 
   // "You can redeem" reminder: after check-in, if the balance still clears a
@@ -48,9 +55,13 @@ export function Success() {
       })
       .then((result) => {
         setPoints(result.customer.pointsBalance)
+        setName(result.customer.name)
         setStatus('success')
       })
-      .catch(() => setStatus('error'))
+      .catch((err) => {
+        // Already visited today: a distinct, non-retryable friendly state.
+        setStatus(err instanceof AlreadyCheckedInTodayError ? 'already' : 'error')
+      })
   }
 
   // Create the checkin exactly once on mount.
@@ -72,9 +83,9 @@ export function Success() {
     runCheckin()
   }
 
-  // Auto-return only after a successful check-in.
+  // Auto-return after a resolved check-in (success, or "already checked in").
   useEffect(() => {
-    if (status !== 'success') return
+    if (status !== 'success' && status !== 'already') return
     const t = setTimeout(() => {
       flow.reset()
       navigate('/', { replace: true })
@@ -105,6 +116,9 @@ export function Success() {
           <h1 className="mt-8 text-4xl font-black tracking-wide">
             {flow.pointsRedeemed ? 'Reward redeemed — enjoy!' : 'You have checked in successfully!'}
           </h1>
+          {name && (
+            <p className="mt-3 text-3xl font-semibold text-white">Thanks, {name}!</p>
+          )}
           {points !== null && (
             <p className="mt-4 text-2xl text-white/70">
               {flow.pointsRedeemed ? 'Your balance is now ' : 'You have '}
@@ -119,6 +133,21 @@ export function Success() {
               <p className="mt-1 text-base text-white/60">Redeem it on your next visit.</p>
             </div>
           )}
+          <p className="mt-10 text-base text-white/40">Returning to the start…</p>
+        </>
+      )}
+
+      {status === 'already' && (
+        <>
+          <div className="flex h-32 w-32 items-center justify-center rounded-full bg-amber-500/20">
+            <span className="text-7xl text-amber-300">✓</span>
+          </div>
+          <h1 className="mt-8 text-4xl font-black tracking-wide">
+            {name ? `You're already checked in today, ${name}!` : "You're already checked in today!"}
+          </h1>
+          <p className="mt-4 text-xl text-white/60">
+            You can only check in once a day. Please see our staff if you need help.
+          </p>
           <p className="mt-10 text-base text-white/40">Returning to the start…</p>
         </>
       )}

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   useCustomer,
   useUpdateCustomer,
+  useDeleteCustomer,
   useActiveLoyaltyPrograms,
   useRedeemPoints,
   useClaimBirthday,
@@ -22,6 +23,7 @@ import { usePagination } from '../../components/usePagination'
 import {
   BirthdayDropdowns,
 } from '../../components/BirthdayDropdowns'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import {
   birthdayStatus,
   birthdayStatusBadge,
@@ -85,6 +87,58 @@ export function CustomerDetail() {
 
       <VisitHistory checkins={checkins} />
       <LoyaltyTransactions transactions={transactions} />
+      <DangerZone customer={customer} />
+    </div>
+  )
+}
+
+// Admin-only: permanently delete a customer and all their history.
+function DangerZone({ customer }: { customer: Customer }) {
+  const navigate = useNavigate()
+  const del = useDeleteCustomer()
+  const [confirming, setConfirming] = useState(false)
+
+  const onConfirm = () => {
+    del.mutate(customer.id, {
+      onSuccess: () => navigate('/admin/customers'),
+    })
+  }
+
+  return (
+    <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-6">
+      <h2 className="text-lg font-semibold text-red-700">Danger zone</h2>
+      <p className="mt-1 text-sm text-red-600">
+        Deleting a customer also removes their visit history and loyalty
+        transactions. This cannot be undone.
+      </p>
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          onClick={() => setConfirming(true)}
+          disabled={del.isPending}
+          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+        >
+          {del.isPending ? 'Deleting…' : 'Delete customer'}
+        </button>
+      </div>
+
+      <ConfirmDialog
+        open={confirming}
+        title="Delete customer?"
+        message={
+          <>
+            This permanently removes{' '}
+            <span className="font-semibold text-slate-800">{customer.name}</span> (
+            {formatPhone(customer.phone)}) along with their visit history and loyalty
+            transactions. This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete"
+        danger
+        busy={del.isPending}
+        error={del.error?.message ?? null}
+        onConfirm={onConfirm}
+        onCancel={() => setConfirming(false)}
+      />
     </div>
   )
 }

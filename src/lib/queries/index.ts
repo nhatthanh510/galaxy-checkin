@@ -6,14 +6,14 @@ export {
   loyaltyProgramKey,
   activeLoyaltyProgramsKey,
 } from './useLoyaltyProgram'
-export { useCustomerLookup } from './useCustomerLookup'
-export { useCreateCheckin } from './useCreateCheckin'
+export { useCustomerLookup, useCheckedInToday } from './useCustomerLookup'
+export { useCreateCheckin, AlreadyCheckedInTodayError } from './useCreateCheckin'
 export { useRedeemPoints } from './useRedeemPoints'
 export type { RedeemResult, RedeemInput } from './useRedeemPoints'
 
 // Admin hooks.
 export { useCustomers, customersKey } from './useCustomers'
-export { useCustomer, useUpdateCustomer } from './useCustomer'
+export { useCustomer, useUpdateCustomer, useDeleteCustomer } from './useCustomer'
 export type { CustomerDetail, UpdateCustomerInput } from './useCustomer'
 export { useUpsertCustomers } from './useUpsertCustomers'
 export type { ImportCustomer } from './useUpsertCustomers'

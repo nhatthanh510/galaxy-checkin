@@ -5,7 +5,11 @@ import { LoyaltyCarousel } from '../../components/LoyaltyCarousel'
 import { ConsentCheckbox } from '../../components/ConsentCheckbox'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
-import { useCustomerLookup, useActiveLoyaltyPrograms } from '../../lib/queries'
+import {
+  useCustomerLookup,
+  useCheckedInToday,
+  useActiveLoyaltyPrograms,
+} from '../../lib/queries'
 import { formatPhone, isComplete, isValidAuMobile, normalizePhone } from '../../lib/phone'
 import { useKioskFlow } from './useKioskFlow'
 
@@ -17,6 +21,12 @@ export function PhoneEntry() {
   const flow = useKioskFlow()
   const { data: activePrograms } = useActiveLoyaltyPrograms()
   const lookup = useCustomerLookup()
+  const checkedInToday = useCheckedInToday()
+  // Set when a returning customer has already checked in today — the flow is
+  // one visit per day, so we stop them here instead of letting them redeem a
+  // reward on a visit that would then be rejected. Holds their name for a warm
+  // message; the panel auto-dismisses so the kiosk is ready for the next person.
+  const [alreadyName, setAlreadyName] = useState<string | null>(null)
 
   // Show points programs first in the carousel (birthday/standing promos after),
   // keeping the query's name order within each group.
@@ -51,9 +61,34 @@ export function PhoneEntry() {
   const proceed = async () => {
     const customer = await lookup.mutateAsync(digits)
     flow.setCustomer(customer)
-    // Known customer -> services (rewards shown inline there). Unknown -> name.
-    navigate(customer ? '/kiosk/services' : '/kiosk/name')
+    // Unknown number -> capture the name. (A brand-new customer can't have a
+    // visit today yet, so no need to check.)
+    if (!customer) {
+      navigate('/kiosk/name')
+      return
+    }
+    // Known customer: enforce one check-in per day before entering the flow.
+    if (await checkedInToday.mutateAsync(customer.id)) {
+      setAlreadyName(customer.name)
+      return
+    }
+    // Otherwise on to services (rewards are shown inline there).
+    navigate('/kiosk/services')
   }
+
+  // Dismiss the "already checked in" panel and reset for the next person.
+  const dismissAlready = () => {
+    setAlreadyName(null)
+    flow.reset()
+  }
+
+  // Auto-dismiss the panel so the kiosk returns to a clean phone screen.
+  useEffect(() => {
+    if (alreadyName == null) return
+    const t = setTimeout(dismissAlready, 6000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alreadyName])
 
   const onNext = async () => {
     if (!complete) return
@@ -71,6 +106,8 @@ export function PhoneEntry() {
   // USB/Bluetooth keyboard works alongside the tablet's touch keypad.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Ignore while the "already checked in" panel is up (no keypad shown).
+      if (alreadyName != null) return
       // Ignore when typing into a field or when a modifier is held.
       const target = e.target as HTMLElement | null
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
@@ -95,7 +132,34 @@ export function PhoneEntry() {
     // Re-bind when the values the handlers close over change, so onNext sees the
     // current digits/valid/forcePrompted state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [digits, complete, valid, forcePrompted, lookup.isPending])
+  }, [digits, complete, valid, forcePrompted, lookup.isPending, alreadyName])
+
+  // Returning customer who already checked in today: a full-screen, self-
+  // dismissing message instead of the keypad.
+  if (alreadyName != null) {
+    return (
+      <KioskLayout showStartOver={false} showPromotions={false}>
+        <div className="flex min-h-full flex-col items-center justify-center px-8 text-center text-white">
+          <div className="flex h-32 w-32 items-center justify-center rounded-full bg-amber-500/20">
+            <span className="text-7xl text-amber-300">✓</span>
+          </div>
+          <h1 className="mt-8 text-4xl font-black tracking-wide">
+            You're already checked in today, {alreadyName}!
+          </h1>
+          <p className="mt-4 text-xl text-white/60">
+            You can only check in once a day. Please see our staff if you need help.
+          </p>
+          <div className="mt-10">
+            <NextButton onClick={dismissAlready} className="w-full max-w-sm">
+              Done
+            </NextButton>
+          </div>
+        </div>
+      </KioskLayout>
+    )
+  }
+
+  const busy = lookup.isPending || checkedInToday.isPending
 
   return (
     // First step: no back arrow, and it drives its own rewards prompt so the
@@ -109,11 +173,11 @@ export function PhoneEntry() {
 
         {/* Right: keypad + entry. */}
         <div className="order-1 lg:order-2">
-          <h1 className="text-center text-3xl font-black tracking-wide text-white">
+          <h1 className="text-center text-2xl font-black tracking-wide text-white sm:text-3xl short-desktop:text-2xl">
             PLEASE ENTER YOUR PHONE NUMBER
           </h1>
 
-          <div className="my-6 flex h-16 items-center justify-center rounded-2xl bg-black/40 text-4xl font-semibold tracking-wider text-white">
+          <div className="my-4 flex h-14 items-center justify-center rounded-2xl bg-black/40 text-3xl font-semibold tracking-wider text-white sm:my-6 sm:h-16 sm:text-4xl short-desktop:my-3 short-desktop:h-14">
             {formatPhone(digits) || (
               <span className="text-white/30">0400 000 000</span>
             )}
@@ -123,18 +187,18 @@ export function PhoneEntry() {
 
           {/* Warn on an invalid AU mobile once the user has tried to continue. */}
           {complete && !valid && (
-            <p className="mt-4 text-center text-lg text-amber-300">
+            <p className="mt-4 text-center text-lg text-amber-300 short-desktop:mt-2 short-desktop:text-base">
               ⚠ That doesn't look like an Australian mobile (should start with 04).
             </p>
           )}
 
-          <div className="mt-6">
+          <div className="mt-4 sm:mt-6 short-desktop:mt-3">
             <NextButton
               onClick={onNext}
-              disabled={!complete || lookup.isPending}
+              disabled={!complete || busy}
               className="w-full"
             >
-              {lookup.isPending
+              {busy
                 ? 'Checking…'
                 : !valid && forcePrompted
                   ? 'Continue anyway'
@@ -144,7 +208,7 @@ export function PhoneEntry() {
         </div>
       </div>
 
-      <div className="mx-auto mt-8 w-full max-w-6xl">
+      <div className="mx-auto mt-8 w-full max-w-6xl short-desktop:mt-3">
         <ConsentCheckbox checked={flow.consent} onChange={flow.setConsent} />
       </div>
     </KioskLayout>

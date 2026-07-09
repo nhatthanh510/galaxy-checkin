@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useCustomers, useLoyaltyProgram, useSettings } from '../../lib/queries'
+import {
+  useCustomers,
+  useDeleteCustomer,
+  useLoyaltyProgram,
+  useSettings,
+} from '../../lib/queries'
 import { CSV_HEADERS, downloadCsv, toCsv } from '../../lib/csv'
 import { formatPhone } from '../../lib/phone'
 import {
@@ -9,15 +14,31 @@ import {
   formatBirthday,
 } from '../../lib/birthday'
 import { customerTier, tierBadge } from '../../lib/tier'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
+import type { Customer } from '../../types'
+
+// Sort options exposed in the dropdown; all order high→low (most recent first
+// for last-visited). Name is the tiebreaker so paging stays deterministic.
+type SortKey = 'lastVisit' | 'points' | 'lifetime' | 'visits'
+const SORT_LABELS: Record<SortKey, string> = {
+  lastVisit: 'Last visited',
+  points: 'Points balance',
+  lifetime: 'Lifetime points',
+  visits: 'Visit count',
+}
 
 export function CustomersList() {
   const { data: customers, isLoading, error } = useCustomers()
   const { data: program } = useLoyaltyProgram()
   const { data: settings } = useSettings()
+  const deleteCustomer = useDeleteCustomer()
   const [search, setSearch] = useState('')
   const [eligibleOnly, setEligibleOnly] = useState(false)
   const [birthdayOnly, setBirthdayOnly] = useState(false)
+  const [sortBy, setSortBy] = useState<SortKey>('lastVisit')
   const [page, setPage] = useState(0) // zero-based page index
+  // Customer pending deletion (drives the confirmation dialog); null when closed.
+  const [toDelete, setToDelete] = useState<Customer | null>(null)
 
   // A customer is redeem-eligible (from admin) when their balance is STRICTLY
   // above the lowest active points-program threshold. Admin can't tell whether a
@@ -61,6 +82,30 @@ export function CustomersList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customers, search, eligibleOnly, threshold, birthdayOnly, bdayBefore, bdayAfter])
 
+  // Apply the chosen sort on top of the filtered list. The base query already
+  // returns last-visited-first, but re-sorting here keeps it correct for the
+  // other keys and after client-side filtering.
+  const sorted = useMemo(() => {
+    const list = [...filtered]
+    const byName = (a: Customer, b: Customer) => a.name.localeCompare(b.name)
+    switch (sortBy) {
+      case 'points':
+        return list.sort((a, b) => b.pointsBalance - a.pointsBalance || byName(a, b))
+      case 'lifetime':
+        return list.sort((a, b) => b.lifetimePoints - a.lifetimePoints || byName(a, b))
+      case 'visits':
+        return list.sort((a, b) => b.visitCount - a.visitCount || byName(a, b))
+      case 'lastVisit':
+      default:
+        return list.sort((a, b) => {
+          // Most recent first; never-visited (null) sort last.
+          const ta = a.lastVisitAt ? Date.parse(a.lastVisitAt) : -Infinity
+          const tb = b.lastVisitAt ? Date.parse(b.lastVisitAt) : -Infinity
+          return tb - ta || byName(a, b)
+        })
+    }
+  }, [filtered, sortBy])
+
   const eligibleCount = useMemo(
     () => (threshold == null ? 0 : (customers ?? []).filter((c) => c.pointsBalance > threshold).length),
     [customers, threshold],
@@ -76,13 +121,13 @@ export function CustomersList() {
     [customers, bdayBefore, bdayAfter],
   )
 
-  // Client-side pagination over the filtered list.
+  // Client-side pagination over the filtered + sorted list.
   const PAGE_SIZE = 50
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
   // Keep the page in range when the filter shrinks the list.
   const safePage = Math.min(page, pageCount - 1)
   const pageStart = safePage * PAGE_SIZE
-  const paged = filtered.slice(pageStart, pageStart + PAGE_SIZE)
+  const paged = sorted.slice(pageStart, pageStart + PAGE_SIZE)
 
   const onExport = () => {
     const rows: (string | number)[][] = [
@@ -99,6 +144,13 @@ export function CustomersList() {
       ]),
     ]
     downloadCsv('customers.csv', toCsv(rows))
+  }
+
+  const confirmDelete = () => {
+    if (!toDelete) return
+    deleteCustomer.mutate(toDelete.id, {
+      onSuccess: () => setToDelete(null),
+    })
   }
 
   return (
@@ -164,6 +216,23 @@ export function CustomersList() {
             {birthdayCount}
           </span>
         </label>
+        <label className="ml-auto flex items-center gap-2 text-sm text-slate-600">
+          Sort by
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value as SortKey)
+              setPage(0)
+            }}
+            className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+          >
+            {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+              <option key={k} value={k}>
+                {SORT_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {isLoading && <p className="text-slate-500">Loading customers…</p>}
@@ -189,6 +258,9 @@ export function CustomersList() {
                 <th className="px-4 py-3 font-medium">Points</th>
                 <th className="hidden px-4 py-3 font-medium lg:table-cell">Lifetime points</th>
                 <th className="px-4 py-3 font-medium">Visits</th>
+                <th className="px-4 py-3 text-right font-medium">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -295,12 +367,22 @@ export function CustomersList() {
                         </div>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-right align-top">
+                      <button
+                        onClick={() => setToDelete(c)}
+                        title={`Delete ${c.name}`}
+                        aria-label={`Delete ${c.name}`}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <TrashIcon />
+                      </button>
+                    </td>
                   </tr>
                 )
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                     No customers found.
                   </td>
                 </tr>
@@ -349,7 +431,48 @@ export function CustomersList() {
           </button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={toDelete != null}
+        title="Delete customer?"
+        message={
+          toDelete && (
+            <>
+              This permanently removes{' '}
+              <span className="font-semibold text-slate-800">{toDelete.name}</span> (
+              {formatPhone(toDelete.phone)}) along with their visit history and loyalty
+              transactions. This cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete"
+        danger
+        busy={deleteCustomer.isPending}
+        error={deleteCustomer.error?.message ?? null}
+        onConfirm={confirmDelete}
+        onCancel={() => setToDelete(null)}
+      />
     </div>
+  )
+}
+
+// Trash/delete glyph for the per-row delete action.
+function TrashIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5"
+      aria-hidden="true"
+    >
+      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
   )
 }
 

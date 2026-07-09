@@ -56,9 +56,12 @@ export function NameEntry() {
           className="mt-8 w-full rounded-2xl bg-black/40 px-8 py-6 text-3xl text-white placeholder:text-white/25 outline-none ring-2 ring-transparent focus:ring-brand-500"
         />
 
-        <div className="mt-8">
-          <p className="mb-3 text-lg text-white/60">
-            Birthday <span className="text-white/30">(optional — get a treat near your birthday!)</span>
+        <div className="mt-8 rounded-2xl border border-pink-400/40 bg-pink-500/10 p-5">
+          <p className="text-xl font-bold text-pink-200">
+            🎂 Add your birthday for a special birthday discount!
+          </p>
+          <p className="mb-4 mt-1 text-base text-pink-100/70">
+            Optional — we'll text you a treat around your birthday.
           </p>
           <BirthdayDropdowns
             value={birthdayParts}
