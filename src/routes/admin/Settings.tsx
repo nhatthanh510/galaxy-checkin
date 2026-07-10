@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSettings, useUpdateSettings } from '../../lib/queries'
 import type { AppSettings } from '../../types'
 
@@ -13,13 +13,14 @@ export function Settings() {
   if (error) return <p className="text-red-600">{error.message}</p>
   if (!settings) return null
 
+  // NOTE: no volatile `key` here. Keying the form on the settings values made a
+  // successful save (which refetches new values) remount the form and wipe its
+  // "Saved" confirmation before it could show. The form seeds from `settings` on
+  // mount and owns its edits, so a stable identity is correct.
   return (
     <div className="max-w-xl">
       <h1 className="text-2xl font-bold">Settings</h1>
-      <SettingsForm
-        key={`${settings.birthdayDaysBefore}-${settings.birthdayDaysAfter}-${settings.birthdayPercentNew}-${settings.birthdayPercentRegular}-${settings.birthdayPercentVip}`}
-        settings={settings}
-      />
+      <SettingsForm settings={settings} />
     </div>
   )
 }
@@ -38,15 +39,30 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
   const [pctVip, setPctVip] = useState(String(settings.birthdayPercentVip))
   const [saved, setSaved] = useState(false)
 
+  // Auto-dismiss the "Saved" confirmation after a few seconds.
+  useEffect(() => {
+    if (!saved) return
+    const t = setTimeout(() => setSaved(false), 3000)
+    return () => clearTimeout(t)
+  }, [saved])
+
+  // Normalized values the Save would write, compared to what's stored — so Save
+  // is disabled when nothing changed (no needless write).
+  const nextValues: AppSettings = {
+    birthdayDaysBefore: Math.max(0, Number(before) || 0),
+    birthdayDaysAfter: Math.max(0, Number(after) || 0),
+    birthdayPercentNew: clampPct(pctNew),
+    birthdayPercentRegular: clampPct(pctRegular),
+    birthdayPercentVip: clampPct(pctVip),
+  }
+  const dirty = (Object.keys(nextValues) as (keyof AppSettings)[]).some(
+    (k) => nextValues[k] !== settings[k],
+  )
+
   const onSave = async () => {
+    if (!dirty) return
     setSaved(false)
-    await update.mutateAsync({
-      birthdayDaysBefore: Math.max(0, Number(before) || 0),
-      birthdayDaysAfter: Math.max(0, Number(after) || 0),
-      birthdayPercentNew: clampPct(pctNew),
-      birthdayPercentRegular: clampPct(pctRegular),
-      birthdayPercentVip: clampPct(pctVip),
-    })
+    await update.mutateAsync(nextValues)
     setSaved(true)
   }
 
@@ -130,12 +146,19 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
       <div className="mt-4 flex items-center gap-3">
         <button
           onClick={onSave}
-          disabled={update.isPending}
+          disabled={update.isPending || !dirty}
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
         >
           {update.isPending ? 'Saving…' : 'Save'}
         </button>
-        {saved && <span className="text-sm text-emerald-600">Saved</span>}
+        {!dirty && !saved && !update.isPending && (
+          <span className="text-sm text-slate-400">No changes to save</span>
+        )}
+        {saved && !update.isPending && (
+          <span className="flex items-center gap-1 text-sm font-medium text-emerald-600">
+            ✓ Birthday settings saved
+          </span>
+        )}
         {update.error && <span className="text-sm text-red-600">{update.error.message}</span>}
       </div>
     </div>

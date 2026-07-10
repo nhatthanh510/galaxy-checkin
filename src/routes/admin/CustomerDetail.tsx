@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   useCustomer,
@@ -267,9 +267,30 @@ function ProfileForm({ customer }: { customer: Customer }) {
   const [points, setPoints] = useState(String(customer.pointsBalance))
   const [lifetimePoints, setLifetimePoints] = useState(String(customer.lifetimePoints))
   const [birthday, setBirthday] = useState(dateStringToParts(customer.birthday))
-  const [saved, setSaved] = useState(false)
+  const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [redeemedMsg, setRedeemedMsg] = useState<string | null>(null)
   const [bdayClaimed, setBdayClaimed] = useState(false)
+
+  // Auto-dismiss the save/redeem confirmations after a few seconds (matches the
+  // Settings page).
+  useEffect(() => {
+    if (!savedMsg) return
+    const t = setTimeout(() => setSavedMsg(null), 3000)
+    return () => clearTimeout(t)
+  }, [savedMsg])
+  useEffect(() => {
+    if (!redeemedMsg) return
+    const t = setTimeout(() => setRedeemedMsg(null), 3000)
+    return () => clearTimeout(t)
+  }, [redeemedMsg])
+
+  // Is the form changed from the saved customer? Save is disabled when not, so
+  // clicking Save with no edits does nothing (no needless write).
+  const dirty =
+    name.trim() !== customer.name ||
+    (Number(points) || 0) !== customer.pointsBalance ||
+    (Number(lifetimePoints) || 0) !== customer.lifetimePoints ||
+    partsToDateString(birthday) !== customer.birthday
   // Confirmation popover shown before claiming a birthday (guards accidental
   // clicks; a first-visit customer also gets a stronger warning inside).
   const [confirmingBday, setConfirmingBday] = useState(false)
@@ -309,7 +330,8 @@ function ProfileForm({ customer }: { customer: Customer }) {
   const onClaimBirthday = () => setConfirmingBday(true)
 
   const onSave = async () => {
-    setSaved(false)
+    if (!dirty) return
+    setSavedMsg(null)
     const updated = await update.mutateAsync({
       id: customer.id,
       name: name.trim(),
@@ -321,7 +343,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
     setBalance(updated.pointsBalance)
     setPoints(String(updated.pointsBalance))
     setLifetimePoints(String(updated.lifetimePoints))
-    setSaved(true)
+    setSavedMsg(`${updated.name}'s profile updated`)
   }
 
   // Points-triggered programs the customer can redeem from admin. Redeemable at
@@ -397,12 +419,15 @@ function ProfileForm({ customer }: { customer: Customer }) {
       <div className="mt-4 flex items-center gap-3">
         <button
           onClick={onSave}
-          disabled={update.isPending}
+          disabled={update.isPending || !dirty}
           className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
         >
           {update.isPending ? 'Saving…' : 'Save'}
         </button>
-        {saved && <span className="text-sm text-emerald-600">Saved</span>}
+        {!dirty && !savedMsg && !update.isPending && (
+          <span className="text-sm text-slate-400">No changes to save</span>
+        )}
+        {savedMsg && <span className="text-sm font-medium text-emerald-600">✓ {savedMsg}</span>}
         {update.error && <span className="text-sm text-red-600">{update.error.message}</span>}
       </div>
 

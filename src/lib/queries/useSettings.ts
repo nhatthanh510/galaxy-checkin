@@ -45,7 +45,10 @@ export function useUpdateSettings() {
   const qc = useQueryClient()
   return useMutation<AppSettings, Error, AppSettings>({
     mutationFn: async (input) => {
-      const { error } = await getSupabase()
+      // .select() so a zero-row update (RLS blocked, or the singleton row
+      // missing) surfaces as an error instead of a silent no-op that looks like
+      // a successful save where "nothing happens".
+      const { data, error } = await getSupabase()
         .from('app_settings')
         .update({
           birthday_days_before: input.birthdayDaysBefore,
@@ -56,7 +59,13 @@ export function useUpdateSettings() {
           updated_at: new Date().toISOString(),
         })
         .eq('id', true)
+        .select('id')
       if (error) throw error
+      if (!data || data.length === 0) {
+        throw new Error(
+          "Settings weren't saved — no row was updated. You may not have permission (admin only).",
+        )
+      }
       return input
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: settingsKey }),
