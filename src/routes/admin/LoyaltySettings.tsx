@@ -3,6 +3,7 @@ import { useLoyaltyPrograms, useDeleteLoyaltyProgram } from '../../lib/queries'
 import type { LoyaltyProgram } from '../../types'
 import { useConfirm } from '../../components/useConfirm'
 import { Button } from '../../components/ui/Button'
+import { TableSkeleton } from '../../components/ui/Skeleton'
 import { ProgramForm } from './LoyaltyProgramForm'
 import { ProgramView } from './LoyaltyProgramView'
 import { earnSummary } from './loyaltyLabels'
@@ -19,7 +20,7 @@ export function LoyaltySettings() {
   const { data: programs, isLoading, error } = useLoyaltyPrograms()
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
 
-  if (isLoading) return <p className="text-slate-500">Loading…</p>
+  if (isLoading) return <TableSkeleton cols={4} className="max-w-3xl" />
   if (error) return <p className="text-red-600">{error.message}</p>
 
   if (mode.kind === 'create') {

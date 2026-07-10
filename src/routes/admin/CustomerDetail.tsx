@@ -6,13 +6,14 @@ import { birthdayStatus, birthdayStatusBadge } from '../../lib/birthday'
 import { ProfileForm } from './CustomerProfileForm'
 import { VisitHistory, LoyaltyTransactions } from './CustomerTables'
 import { DangerZone } from './CustomerDangerZone'
+import { FormSkeleton } from '../../components/ui/Skeleton'
 
 export function CustomerDetail() {
   const { id } = useParams<{ id: string }>()
   const { data, isLoading, error } = useCustomer(id)
   const { data: settings } = useSettings()
 
-  if (isLoading) return <p className="text-slate-500">Loading…</p>
+  if (isLoading) return <FormSkeleton fields={4} />
   if (error) return <p className="text-red-600">{error.message}</p>
   if (!data) return null
 

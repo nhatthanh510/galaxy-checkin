@@ -4,6 +4,7 @@ import type { AppSettings } from '../../types'
 import { TextInput } from '../../components/ui/TextInput'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { FormSkeleton } from '../../components/ui/Skeleton'
 
 // Admin: app-wide settings. Currently the birthday "highlight" window used to
 // flag upcoming-birthday customers with a 🎂 badge in the admin list/detail.
@@ -12,7 +13,7 @@ import { Card } from '../../components/ui/Card'
 export function Settings() {
   const { data: settings, isLoading, error } = useSettings()
 
-  if (isLoading) return <p className="text-slate-500">Loading…</p>
+  if (isLoading) return <FormSkeleton fields={5} />
   if (error) return <p className="text-red-600">{error.message}</p>
   if (!settings) return null
 

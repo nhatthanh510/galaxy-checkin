@@ -20,6 +20,7 @@ import { customerTier, tierBadge } from '../../lib/tier'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { Button } from '../../components/ui/Button'
 import { TextInput } from '../../components/ui/TextInput'
+import { TableSkeleton } from '../../components/ui/Skeleton'
 import type { Customer } from '../../types'
 import {
   ELLIPSIS,
@@ -206,6 +207,55 @@ export function CustomersList() {
   }
   const dateFilterActive = checkinDate != null
 
+  // The active filters, as removable chips (label + how to clear it). Shown as a
+  // row under the filter bar so it's obvious what's narrowing the list — easy to
+  // forget a toggle is on and wonder where the customers went.
+  const dateChipLabel = () => {
+    if (checkinDate == null) return ''
+    if (todayActive) return 'Checked in: Today'
+    if (yesterdayActive) return 'Checked in: Yesterday'
+    return `Checked in: ${checkinDate.toLocaleDateString()}`
+  }
+  const activeFilters: { key: string; label: string; clear: () => void }[] = [
+    search.trim() && {
+      key: 'search',
+      label: `Search: "${search.trim()}"`,
+      clear: () => {
+        setSearch('')
+        setPage(0)
+      },
+    },
+    eligibleOnly && {
+      key: 'eligible',
+      label: 'Redeem-eligible',
+      clear: () => {
+        setEligibleOnly(false)
+        setPage(0)
+      },
+    },
+    birthdayOnly && {
+      key: 'birthday',
+      label: '🎂 Birthday soon',
+      clear: () => {
+        setBirthdayOnly(false)
+        setPage(0)
+      },
+    },
+    dateFilterActive && {
+      key: 'date',
+      label: dateChipLabel(),
+      clear: () => setPreset(null),
+    },
+  ].filter((x): x is { key: string; label: string; clear: () => void } => Boolean(x))
+
+  const clearAllFilters = () => {
+    setSearch('')
+    setEligibleOnly(false)
+    setBirthdayOnly(false)
+    setPreset(null)
+    setPage(0)
+  }
+
   return (
     <div className="flex h-full min-w-0 flex-col">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -320,7 +370,40 @@ export function CustomersList() {
         </label>
       </div>
 
-      {isLoading && <p className="text-slate-500">Loading customers…</p>}
+      {/* Active-filter chips — one removable pill per active filter, so it's
+          always clear what's narrowing the list. */}
+      {activeFilters.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            Filters
+          </span>
+          {activeFilters.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={f.clear}
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 py-1 pl-3 pr-2 text-sm font-medium text-brand-700 hover:bg-brand-200"
+            >
+              {f.label}
+              <span className="text-brand-500" aria-hidden>
+                ✕
+              </span>
+              <span className="sr-only">Remove filter</span>
+            </button>
+          ))}
+          {activeFilters.length > 1 && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="text-sm font-medium text-slate-500 hover:text-slate-700"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
+
+      {isLoading && <TableSkeleton cols={5} fill className="flex min-h-0 flex-1 flex-col" />}
       {error && <p className="text-red-600">{error.message}</p>}
 
       {!isLoading && !error && (

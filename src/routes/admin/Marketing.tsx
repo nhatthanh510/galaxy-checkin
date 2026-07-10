@@ -13,6 +13,7 @@ import { renderTemplate, templateValues, smsSegments } from '../../lib/sms'
 import { useConfirm } from '../../components/useConfirm'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { TableSkeleton } from '../../components/ui/Skeleton'
 
 // Admin: compose and send a marketing SMS campaign. Recipients are restricted to
 // customers who opted in (marketing_consent), per SMS marketing law.
@@ -78,7 +79,8 @@ export function Marketing() {
     setSelected(new Set())
   }
 
-  if (custLoading || tplLoading) return <p className="text-slate-500">Loading…</p>
+  if (custLoading || tplLoading)
+    return <TableSkeleton cols={2} rows={6} className="min-w-0 max-w-4xl" />
 
   return (
     <div className="min-w-0 max-w-4xl">

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth/useAuth'
+import { FullScreenSpinner } from './ui/Spinner'
 
 // Route guard for the admin area:
 //   - still loading      -> spinner
@@ -11,11 +12,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   const { session, isAdmin, loading } = useAuth()
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-500">
-        Loading…
-      </div>
-    )
+    return <FullScreenSpinner tone="light" />
   }
 
   if (!session) {

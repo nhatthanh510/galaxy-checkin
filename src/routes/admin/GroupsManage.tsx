@@ -11,6 +11,7 @@ import { useConfirm } from '../../components/useConfirm'
 import { TextInput } from '../../components/ui/TextInput'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { TableSkeleton } from '../../components/ui/Skeleton'
 
 type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; group: ServiceGroup }
 
@@ -20,7 +21,7 @@ export function GroupsManage() {
   const { data: groups, isLoading, error } = useServiceGroups(true)
   const [mode, setMode] = useState<Mode>({ kind: 'list' })
 
-  if (isLoading) return <p className="text-slate-500">Loading…</p>
+  if (isLoading) return <TableSkeleton cols={3} className="min-w-0 max-w-3xl" />
   if (error) return <p className="text-red-600">{error.message}</p>
 
   if (mode.kind === 'create') return <GroupForm onDone={() => setMode({ kind: 'list' })} />
