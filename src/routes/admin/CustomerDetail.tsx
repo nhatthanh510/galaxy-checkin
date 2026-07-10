@@ -17,7 +17,7 @@ import type {
 } from '../../types'
 import { formatPhone } from '../../lib/phone'
 import { formatReward } from '../../lib/reward'
-import { customerTier, tierBadge } from '../../lib/tier'
+import { birthdayPercentForTier, customerTier, tierBadge, tierName } from '../../lib/tier'
 import { Pagination } from '../../components/Pagination'
 import { usePagination } from '../../components/usePagination'
 import {
@@ -44,7 +44,17 @@ export function CustomerDetail() {
 
   const { customer, checkins, transactions } = data
   const tier = customerTier(customer.lifetimePoints)
-  const detailTier = tier ? tierBadge(tier) : null
+  const detailTier = tierBadge(tier)
+  // The birthday discount this customer gets, by tier — so staff/admin know the
+  // exact percent (matches what the kiosk shows and the birthday SMS sends).
+  const birthdayPct = settings
+    ? birthdayPercentForTier(customer.lifetimePoints, {
+        new: settings.birthdayPercentNew,
+        regular: settings.birthdayPercentRegular,
+        vip: settings.birthdayPercentVip,
+      })
+    : null
+  const tierLabel = tierName(tier)
   const bdayBadge = settings
     ? birthdayStatusBadge(
         birthdayStatus(
@@ -77,6 +87,11 @@ export function CustomerDetail() {
             className={`rounded-full px-3 py-1 text-sm font-medium ${bdayBadge.className}`}
           >
             {bdayBadge.label}
+          </span>
+        )}
+        {birthdayPct != null && (
+          <span className="rounded-full bg-pink-100 px-3 py-1 text-sm font-medium text-pink-700">
+            🎂 {birthdayPct}% off birthday ({tierLabel} tier)
           </span>
         )}
       </div>
@@ -255,6 +270,11 @@ function ProfileForm({ customer }: { customer: Customer }) {
   const [saved, setSaved] = useState(false)
   const [redeemedMsg, setRedeemedMsg] = useState<string | null>(null)
   const [bdayClaimed, setBdayClaimed] = useState(false)
+  // Confirmation popover shown before claiming a birthday (guards accidental
+  // clicks; a first-visit customer also gets a stronger warning inside).
+  const [confirmingBday, setConfirmingBday] = useState(false)
+  // The points program pending a redeem confirmation, or null when closed.
+  const [confirmingRedeem, setConfirmingRedeem] = useState<LoyaltyProgram | null>(null)
   // Live balance for eligibility (updates after each redeem without a refetch).
   const [balance, setBalance] = useState(customer.pointsBalance)
   const currentYear = new Date().getFullYear()
@@ -271,10 +291,22 @@ function ProfileForm({ customer }: { customer: Customer }) {
     ) &&
     !bdayClaimed
 
-  const onClaimBirthday = async () => {
+  // A customer's birthday reward opens from their SECOND visit — a first-timer
+  // who just entered a birthday near today shouldn't claim it on sign-up. Mirror
+  // the kiosk rule (useEligiblePromotions) here, as a guard, not a hard block.
+  const birthdayFirstVisitOnly = customer.visitCount < 2
+
+  // Run the actual claim (called directly for returning customers, or from the
+  // confirmation popover for first-visit customers).
+  const doClaimBirthday = async () => {
     await claimBirthday.mutateAsync(customer.id)
     setBdayClaimed(true)
+    setConfirmingBday(false)
   }
+
+  // Always confirm before claiming (guards accidental clicks). The popover shows
+  // an extra warning for a first-visit customer.
+  const onClaimBirthday = () => setConfirmingBday(true)
 
   const onSave = async () => {
     setSaved(false)
@@ -292,18 +324,24 @@ function ProfileForm({ customer }: { customer: Customer }) {
     setSaved(true)
   }
 
-  // Points-triggered programs the customer can redeem from admin. Admin requires
-  // the balance to be STRICTLY above the threshold (> N, not >= N): staff can't
-  // tell whether a point was earned on today's visit, so redeeming is only
-  // offered above the threshold. The kiosk uses >= N (reaching the kiosk redeem
-  // screen is itself a later check-in). Date-window/standing promos aren't
-  // points-redeemable — the birthday claim has its own control below.
+  // Points-triggered programs the customer can redeem from admin. Redeemable at
+  // the threshold (>= N): a customer with exactly N points can redeem an N-point
+  // reward, matching the kiosk. Date-window/standing promos aren't points-
+  // redeemable — the birthday claim has its own control below.
   const eligiblePrograms = (programs ?? []).filter(
-    (p) => p.triggerType === 'points' && balance > p.pointsPerReward,
+    (p) => p.triggerType === 'points' && balance >= p.pointsPerReward,
   )
 
-  const onRedeem = async (program: LoyaltyProgram) => {
+  // Clicking Redeem opens a confirm popover (guards accidental clicks); the
+  // actual redeem runs on confirm.
+  const onRedeem = (program: LoyaltyProgram) => {
     setRedeemedMsg(null)
+    setConfirmingRedeem(program)
+  }
+
+  const doRedeem = async () => {
+    const program = confirmingRedeem
+    if (!program) return
     const result = await redeem.mutateAsync({
       customerId: customer.id,
       programId: program.id,
@@ -313,6 +351,7 @@ function ProfileForm({ customer }: { customer: Customer }) {
     setRedeemedMsg(
       `Redeemed ${result.redeemedPoints} points from "${program.name}" for ${formatReward(result.rewardType, result.rewardValue)}. New balance: ${result.pointsBalance}.`,
     )
+    setConfirmingRedeem(null)
   }
 
   return (
@@ -398,11 +437,39 @@ function ProfileForm({ customer }: { customer: Customer }) {
         )}
         {redeemedMsg && <p className="mt-2 text-sm text-emerald-600">{redeemedMsg}</p>}
         {redeem.error && <p className="mt-2 text-sm text-red-600">{redeem.error.message}</p>}
+        <ConfirmDialog
+          open={confirmingRedeem != null}
+          title="Redeem this reward?"
+          message={
+            confirmingRedeem && (
+              <>
+                Redeem <span className="font-semibold text-slate-800">{confirmingRedeem.name}</span>{' '}
+                for <span className="font-semibold text-slate-800">{customer.name}</span>? This spends{' '}
+                {confirmingRedeem.pointsPerReward} points (
+                {formatReward(confirmingRedeem.rewardType, confirmingRedeem.rewardValue)}) and can't be
+                undone.
+              </>
+            )
+          }
+          confirmLabel="Redeem"
+          busy={redeem.isPending}
+          error={redeem.error?.message ?? null}
+          onConfirm={doRedeem}
+          onCancel={() => setConfirmingRedeem(null)}
+        />
       </div>
 
-      {/* Birthday discount — mark used this year (hides the reminder). */}
+      {/* Birthday discount — mark used this year (hides the reminder). Allowed
+          even on a first visit, but a warning + confirm popover guards it. */}
       {bdayRemind && (
         <div className="mt-6 border-t border-slate-100 pt-4">
+          {birthdayFirstVisitOnly && (
+            <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              ⚠️ This is the customer's first visit. The birthday reward is meant for
+              returning customers (2nd visit onward) — you can still claim it, but you'll be
+              asked to confirm.
+            </p>
+          )}
           <div className="flex items-center gap-3">
             <button
               onClick={onClaimBirthday}
@@ -418,6 +485,34 @@ function ProfileForm({ customer }: { customer: Customer }) {
           {claimBirthday.error && (
             <p className="mt-2 text-sm text-red-600">{claimBirthday.error.message}</p>
           )}
+          <ConfirmDialog
+            open={confirmingBday}
+            title={
+              birthdayFirstVisitOnly
+                ? 'Claim birthday reward on first visit?'
+                : 'Mark birthday discount as used?'
+            }
+            message={
+              birthdayFirstVisitOnly ? (
+                <>
+                  ⚠️ <span className="font-semibold text-slate-800">{customer.name}</span> has only
+                  visited once. The birthday reward is normally for returning customers (2nd visit
+                  onward). Claim it anyway for {currentYear}?
+                </>
+              ) : (
+                <>
+                  Record the birthday benefit for{' '}
+                  <span className="font-semibold text-slate-800">{customer.name}</span> as claimed
+                  for {currentYear}? This hides the birthday reminder until next year.
+                </>
+              )
+            }
+            confirmLabel={birthdayFirstVisitOnly ? 'Claim anyway' : 'Mark as used'}
+            busy={claimBirthday.isPending}
+            error={claimBirthday.error?.message ?? null}
+            onConfirm={doClaimBirthday}
+            onCancel={() => setConfirmingBday(false)}
+          />
         </div>
       )}
       {bdayClaimed && (

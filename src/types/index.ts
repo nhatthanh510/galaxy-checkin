@@ -118,6 +118,12 @@ export interface CreateCheckinInput {
 export interface AppSettings {
   birthdayDaysBefore: number
   birthdayDaysAfter: number
+  // Birthday discount percent by loyalty tier (New / Regular / VIP). The
+  // birthday reward's percent off is chosen by the customer's tier, not by the
+  // program's reward_value. See src/lib/tier.ts.
+  birthdayPercentNew: number
+  birthdayPercentRegular: number
+  birthdayPercentVip: number
 }
 
 // One row of a customer's visit history, with resolved service names.
@@ -155,6 +161,9 @@ export interface CustomerRow {
 export interface AppSettingsRow {
   birthday_days_before: number
   birthday_days_after: number
+  birthday_percent_new: number
+  birthday_percent_regular: number
+  birthday_percent_vip: number
 }
 
 export interface ServiceRow {
@@ -211,4 +220,5 @@ export interface CreateCheckinRpcRow {
   customer_name: string
   points_balance: number
   visit_count: number
+  lifetime_points: number
 }

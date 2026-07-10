@@ -1,45 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
-import {
-  useCreateCheckin,
-  useActiveLoyaltyPrograms,
-  AlreadyCheckedInTodayError,
-} from '../../lib/queries'
-import { formatReward } from '../../lib/reward'
+import { useCreateCheckin, useRedeemPoints, AlreadyCheckedInTodayError } from '../../lib/queries'
+import { useEligiblePromotions } from '../../lib/useEligiblePromotions'
+import type { Customer } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
 
-const AUTO_RETURN_MS = 6000
-// Linger a bit longer when we're showing the "you can redeem next time" reminder
-// so the customer has time to read it.
-const AUTO_RETURN_WITH_REMINDER_MS = 9000
+// Auto-return delay once there's nothing left to decide (no rewards, or the
+// reward was already taken). While a reward decision is still pending the timer
+// doesn't run at all — see `decisionPending`.
+const AUTO_RETURN_MS = 8000
 
 type Status = 'submitting' | 'success' | 'already' | 'error'
 
-// Step 5: confirmation. Creates the checkin (status `waiting`) on mount. On
-// success, shows the confirmation + points and auto-returns to the phone screen.
-// On failure, shows a clear error with a Retry so the visit isn't silently lost.
+// Step 5: confirmation. Creates the checkin (status `waiting`, +1 point) on
+// mount, then — against the resulting balance — offers any reward the customer
+// can now redeem/claim inline. Redeeming here sees today's point (a customer who
+// arrives at 9 and needs 10 checks in to 10 and can redeem right away).
+// Auto-returns to the phone screen after a resolved check-in.
 export function Success() {
   const navigate = useNavigate()
   const flow = useKioskFlow()
   const createCheckin = useCreateCheckin()
-  const { data: programs } = useActiveLoyaltyPrograms()
+  const redeem = useRedeemPoints()
   const [status, setStatus] = useState<Status>('submitting')
-  const [points, setPoints] = useState<number | null>(null)
-  // Name to echo back on the confirmation so the customer can double-check it.
-  // Prefer the flow's known/entered name; the RPC's returned name backs it up.
-  const [name, setName] = useState<string | null>(flow.customer?.name ?? flow.name ?? null)
+  // The customer as of after check-in — drives reward eligibility. Updated in
+  // place after each redeem/claim so the offered rewards recompute.
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [actingId, setActingId] = useState<string | null>(null)
+  // Whether the customer redeemed/claimed anything on this screen (copy only).
+  const [redeemedAny, setRedeemedAny] = useState(false)
   const submitted = useRef(false)
 
-  // "You can redeem" reminder: after check-in, if the balance still clears a
-  // points program's threshold, nudge the customer to redeem next visit. Pick the
-  // LOWEST threshold they qualify for so the reminder is always relevant.
-  const redeemableReward =
-    points == null
-      ? null
-      : (programs ?? [])
-          .filter((p) => p.triggerType === 'points' && p.pointsPerReward > 0 && points >= p.pointsPerReward)
-          .sort((a, b) => a.pointsPerReward - b.pointsPerReward)[0] ?? null
+  const name = customer?.name ?? flow.customer?.name ?? flow.name ?? null
+  const points = customer?.pointsBalance ?? null
+
+  // Rewards the customer can act on right now, from the post-check-in balance.
+  const promotions = useEligiblePromotions(customer)
 
   const runCheckin = () => {
     createCheckin
@@ -50,12 +47,23 @@ export function Success() {
         serviceIds: flow.selectedServiceIds,
         birthday: flow.birthday,
         consent: flow.consent,
-        // Redeeming a points reward this visit means no +1 is earned.
-        awardPoint: !flow.pointsRedeemed,
+        // Every check-in earns +1 — including visits where a reward is redeemed.
+        awardPoint: true,
       })
       .then((result) => {
-        setPoints(result.customer.pointsBalance)
-        setName(result.customer.name)
+        // Build the post-check-in customer. For a KNOWN customer, keep their
+        // stored birthday + birthdayRedeemedYear (create_checkin doesn't return
+        // them) and overlay the fresh balances so birthday eligibility is right.
+        const merged: Customer = flow.customer
+          ? {
+              ...flow.customer,
+              name: result.customer.name,
+              pointsBalance: result.customer.pointsBalance,
+              lifetimePoints: result.customer.lifetimePoints,
+              visitCount: result.customer.visitCount,
+            }
+          : result.customer
+        setCustomer(merged)
         setStatus('success')
       })
       .catch((err) => {
@@ -83,21 +91,68 @@ export function Success() {
     runCheckin()
   }
 
-  // Auto-return after a resolved check-in (success, or "already checked in").
+  const onAct = async (programId: string, stampsYear: boolean) => {
+    if (!customer) return
+    setActingId(programId)
+    try {
+      const result = await redeem.mutateAsync({ customerId: customer.id, programId })
+      setRedeemedAny(true)
+      if (stampsYear) {
+        // Birthday / standing claim: no balance change, mark the year claimed.
+        setCustomer({ ...customer, birthdayRedeemedYear: new Date().getFullYear() })
+      } else {
+        // Points reward: balance dropped (the +1 earned this visit is kept).
+        setCustomer({ ...customer, pointsBalance: result.pointsBalance })
+      }
+    } catch {
+      // Leave the reward on offer to retry; error shown below.
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  // Seconds left before auto-returning to the start; null when the timer isn't
+  // running (e.g. while a reward decision is still pending). Shown to staff so
+  // the countdown isn't a surprise.
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
+
+  // When is there a reward DECISION still pending? While rewards are on offer and
+  // the customer hasn't acted, staff may be talking it through — so DON'T run the
+  // auto-return timer. It resumes once the reward is taken (redeemedAny) or there
+  // was nothing to decide. This mirrors staff-assisted kiosks: the timeout is a
+  // "customer walked away" safety net, not a hard deadline on an active choice.
+  const decisionPending =
+    status === 'success' && promotions.length > 0 && !redeemedAny
+
+  // Auto-return after a resolved check-in, ticking down once a second. Skipped
+  // while a decision is pending. All state updates happen inside the interval
+  // callback (async) to keep the effect body free of synchronous setState.
+  const resolved = status === 'success' || status === 'already'
   useEffect(() => {
-    if (status !== 'success' && status !== 'already') return
-    const t = setTimeout(() => {
-      flow.reset()
-      navigate('/', { replace: true })
-    }, redeemableReward ? AUTO_RETURN_WITH_REMINDER_MS : AUTO_RETURN_MS)
-    return () => clearTimeout(t)
+    if (!resolved || decisionPending) return
+    const deadline = performance.now() + AUTO_RETURN_MS
+    const compute = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - performance.now()) / 1000))
+      setSecondsLeft(remaining)
+      if (remaining <= 0) {
+        clearInterval(tick)
+        flow.reset()
+        navigate('/', { replace: true })
+      }
+    }
+    // The first interval tick (within 250ms) paints the number; the effect body
+    // itself performs no synchronous setState.
+    const tick = setInterval(compute, 250)
+    return () => clearInterval(tick)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status])
+  }, [resolved, decisionPending])
 
   const startOver = () => {
     flow.reset()
     navigate('/', { replace: true })
   }
+
+  const busy = actingId != null
 
   return (
     <div className="flex min-h-full flex-col items-center justify-center bg-[#0b0b12] px-8 text-center text-white">
@@ -114,7 +169,7 @@ export function Success() {
             <span className="text-7xl text-emerald-400">✓</span>
           </div>
           <h1 className="mt-8 text-4xl font-black tracking-wide">
-            {flow.pointsRedeemed ? 'Reward redeemed — enjoy!' : 'You have checked in successfully!'}
+            {redeemedAny ? 'Reward redeemed — enjoy!' : 'You have checked in successfully!'}
           </h1>
 
           {/* Prominent customer card: name + current points balance, front and
@@ -139,20 +194,75 @@ export function Success() {
               )}
               {points !== null && (
                 <p className="mt-1 text-center text-base text-white/50">
-                  {flow.pointsRedeemed ? 'Your new balance' : 'Your points balance'}
+                  {redeemedAny ? 'Your new balance' : 'Your points balance'}
                 </p>
               )}
             </div>
           )}
-          {redeemableReward && (
-            <div className="mt-6 rounded-2xl border border-brand-400/30 bg-brand-500/10 px-6 py-4">
-              <p className="text-xl font-semibold text-brand-200">
-                🎁 You have enough points for {formatReward(redeemableReward.rewardType, redeemableReward.rewardValue)}!
+
+          {/* Redeemable rewards, offered against the post-check-in balance. Only
+              ONE reward may be taken per visit — once the customer redeems or
+              claims anything, the rest are locked. */}
+          {promotions.length > 0 && (
+            <div className="mt-6 w-full max-w-md space-y-3">
+              <p className="text-lg font-semibold text-brand-200">
+                🎁 {redeemedAny ? 'Reward applied' : 'Pick one reward'}
               </p>
-              <p className="mt-1 text-base text-white/60">Redeem it on your next visit.</p>
+              {promotions.map((promo) => (
+                <div
+                  key={promo.id}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-left"
+                >
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-lg font-semibold text-white">{promo.title}</p>
+                      {promo.tierLabel && (
+                        <span className="rounded-full bg-amber-400/20 px-2.5 py-0.5 text-sm font-bold text-amber-300 ring-1 ring-amber-300/40">
+                          ⭐ {promo.tierLabel}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-white/60">{promo.detail}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onAct(promo.programId, promo.stampsYear)}
+                    // One reward per visit: lock every button once one is taken.
+                    disabled={busy || redeemedAny}
+                    className="shrink-0 rounded-xl bg-brand-500 px-6 py-3 text-base font-bold text-white hover:bg-brand-400 disabled:opacity-50"
+                  >
+                    {actingId === promo.programId ? '…' : promo.actionLabel}
+                  </button>
+                </div>
+              ))}
+              {redeemedAny && (
+                <p className="text-sm text-white/50">Just one reward per visit — enjoy!</p>
+              )}
+              {redeem.error && (
+                <p className="text-sm text-red-300">{redeem.error.message}</p>
+              )}
             </div>
           )}
-          <p className="mt-10 text-base text-white/40">Returning to the start…</p>
+
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <NextButton variant="ghost" onClick={startOver} disabled={busy}>
+              Done
+            </NextButton>
+            {decisionPending ? (
+              // Waiting on a reward decision — no countdown; staff/customer take
+              // their time. Tapping Done (or redeeming) resumes the flow.
+              <p className="text-base text-white/40">Take your time — tap Done when finished.</p>
+            ) : (
+              secondsLeft != null && (
+                <p className="flex items-center gap-2 text-base text-white/50">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 font-bold tabular-nums text-white/80">
+                    {secondsLeft}
+                  </span>
+                  Returning to the start…
+                </p>
+              )
+            )}
+          </div>
         </>
       )}
 
@@ -167,7 +277,14 @@ export function Success() {
           <p className="mt-4 text-xl text-white/60">
             You can only check in once a day. Please see our staff if you need help.
           </p>
-          <p className="mt-10 text-base text-white/40">Returning to the start…</p>
+          {secondsLeft != null && (
+            <p className="mt-10 flex items-center gap-2 text-base text-white/50">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 font-bold tabular-nums text-white/80">
+                {secondsLeft}
+              </span>
+              Returning to the start…
+            </p>
+          )}
         </>
       )}
 

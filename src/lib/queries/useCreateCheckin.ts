@@ -64,10 +64,11 @@ export function useCreateCheckin() {
           name: row.customer_name,
           visitCount: row.visit_count,
           pointsBalance: row.points_balance,
-          // create_checkin doesn't return lifetime_points; not used on this path.
-          lifetimePoints: 0,
+          lifetimePoints: row.lifetime_points,
           lastVisitAt: null,
           birthday: input.birthday,
+          // create_checkin doesn't return the redeemed year; the caller (Success)
+          // carries the known customer's value forward for birthday eligibility.
           birthdayRedeemedYear: null,
           marketingConsent: input.consent,
         },

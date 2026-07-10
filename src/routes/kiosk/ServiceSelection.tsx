@@ -5,13 +5,12 @@ import { KioskLayout } from '../../components/KioskLayout'
 import { ServiceRow } from '../../components/ServiceRow'
 import { BackButton } from '../../components/BackButton'
 import { useServices, useServiceGroups } from '../../lib/queries'
-import { useEligiblePromotions } from '../../lib/useEligiblePromotions'
 import type { Service, ServiceGroup } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
 
 // Step 3: service selection (optional — SKIP or NEXT). For a known customer this
-// is the first screen after phone entry, so we greet them and show any eligible
-// rewards in-context (redeem here — no interrupting popup).
+// is the first screen after phone entry, so we greet them. Rewards are offered
+// on the SUCCESS screen after check-in (so redeeming sees today's +1 point).
 export function ServiceSelection() {
   const navigate = useNavigate()
   const flow = useKioskFlow()
@@ -27,12 +26,9 @@ export function ServiceSelection() {
   const customer = flow.customer
   const noServices = !isLoading && (services ?? []).length === 0
 
-  // If the customer has any eligible reward, show the reward step next; otherwise
-  // go straight to success. (Redeeming happens before check-in so a points redeem
-  // can suppress this visit's +1.)
-  const promotions = useEligiblePromotions(customer)
-  const goNext = () =>
-    navigate(promotions.length > 0 ? '/kiosk/reward' : '/kiosk/success')
+  // Check-in happens on the success screen; rewards are offered there, against
+  // the post-check-in balance.
+  const goNext = () => navigate('/kiosk/success')
 
   return (
     <KioskLayout>

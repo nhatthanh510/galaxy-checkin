@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   useCustomers,
   useDeleteCustomer,
   useLoyaltyProgram,
   useSettings,
+  useCheckinCustomerIdsOnDate,
 } from '../../lib/queries'
 import { CSV_HEADERS, downloadCsv, toCsv } from '../../lib/csv'
+import { localDateFromInput, toDateInputValue } from '../../lib/day'
 import { formatPhone } from '../../lib/phone'
 import {
   birthdayStatus,
@@ -35,18 +37,26 @@ export function CustomersList() {
   const [search, setSearch] = useState('')
   const [eligibleOnly, setEligibleOnly] = useState(false)
   const [birthdayOnly, setBirthdayOnly] = useState(false)
+  // Filter to customers who checked in on this local day; null = filter off.
+  const [checkinDate, setCheckinDate] = useState<Date | null>(null)
+  // Whether the "Custom" date picker is revealed (independent of a date being
+  // chosen yet, so the picker can show before the user picks).
+  const [customDateOpen, setCustomDateOpen] = useState(false)
   const [sortBy, setSortBy] = useState<SortKey>('lastVisit')
   const [page, setPage] = useState(0) // zero-based page index
   // Customer pending deletion (drives the confirmation dialog); null when closed.
   const [toDelete, setToDelete] = useState<Customer | null>(null)
 
-  // A customer is redeem-eligible (from admin) when their balance is STRICTLY
-  // above the lowest active points-program threshold. Admin can't tell whether a
-  // point was earned on today's visit, so staff only redeem above the threshold
-  // (> N), guaranteeing a point beyond the current cycle. If no active points
-  // program has a positive threshold, nobody is eligible.
+  // A customer is redeem-eligible (from admin) when their balance meets the
+  // lowest active points-program threshold (>= N — a customer with exactly N
+  // points can redeem an N-point reward, matching the kiosk and the redeem
+  // control on the detail page). Null threshold => nobody eligible.
   const threshold = program?.pointsPerReward ?? null
-  const isEligible = (points: number) => threshold != null && points > threshold
+  const isEligible = (points: number) => threshold != null && points >= threshold
+
+  // Customer IDs that checked in on the selected date (only fetched when set).
+  const { data: checkinIds, isFetching: checkinIdsLoading } =
+    useCheckinCustomerIdsOnDate(checkinDate)
 
   // Birthday status for a customer, using the configured window (default 7/7).
   const today = new Date()
@@ -67,7 +77,7 @@ export function CustomersList() {
       )
     }
     if (eligibleOnly && threshold != null) {
-      list = list.filter((c) => c.pointsBalance > threshold)
+      list = list.filter((c) => c.pointsBalance >= threshold)
     }
     if (birthdayOnly) {
       list = list.filter((c) => {
@@ -76,11 +86,17 @@ export function CustomersList() {
         return s !== 'none' && s !== 'claimed'
       })
     }
+    // Checked-in-on-date: keep only customers whose id is in the day's set. While
+    // the set is still loading, show nothing (avoids flashing the full list).
+    if (checkinDate != null) {
+      const ids = checkinIds
+      list = ids ? list.filter((c) => ids.has(c.id)) : []
+    }
     return list
     // `today` is a fresh Date each render but only its day matters; the window
     // settings (bdayBefore/After) are the values that actually change results.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customers, search, eligibleOnly, threshold, birthdayOnly, bdayBefore, bdayAfter])
+  }, [customers, search, eligibleOnly, threshold, birthdayOnly, bdayBefore, bdayAfter, checkinDate, checkinIds])
 
   // Apply the chosen sort on top of the filtered list. The base query already
   // returns last-visited-first, but re-sorting here keeps it correct for the
@@ -107,7 +123,7 @@ export function CustomersList() {
   }, [filtered, sortBy])
 
   const eligibleCount = useMemo(
-    () => (threshold == null ? 0 : (customers ?? []).filter((c) => c.pointsBalance > threshold).length),
+    () => (threshold == null ? 0 : (customers ?? []).filter((c) => c.pointsBalance >= threshold).length),
     [customers, threshold],
   )
 
@@ -152,6 +168,42 @@ export function CustomersList() {
       onSuccess: () => setToDelete(null),
     })
   }
+
+  // Date-filter helpers. The filter is one control with presets (Today /
+  // Yesterday) plus a Custom picker; `checkinDate` holds the chosen local day.
+  const isSameLocalDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  const dayOffset = (days: number) => {
+    const d = new Date()
+    d.setDate(d.getDate() + days)
+    return d
+  }
+  const todayActive =
+    !customDateOpen && checkinDate != null && isSameLocalDay(checkinDate, dayOffset(0))
+  const yesterdayActive =
+    !customDateOpen && checkinDate != null && isSameLocalDay(checkinDate, dayOffset(-1))
+  // Set a preset day (or clear when the active one is tapped again).
+  const setPreset = (d: Date | null) => {
+    setCustomDateOpen(false)
+    setCheckinDate(d)
+    setPage(0)
+  }
+  // Enter/leave Custom mode; keep any already-chosen date so the picker seeds.
+  const toggleCustom = () => {
+    setCustomDateOpen((open) => {
+      const next = !open
+      if (!next) setCheckinDate(null) // leaving Custom clears the filter
+      setPage(0)
+      return next
+    })
+  }
+  const setCustomDate = (d: Date | null) => {
+    setCheckinDate(d)
+    setPage(0)
+  }
+  const dateFilterActive = checkinDate != null
 
   return (
     <div className="flex h-full min-w-0 flex-col">
@@ -216,6 +268,42 @@ export function CustomersList() {
             {birthdayCount}
           </span>
         </label>
+
+        {/* Checked-in-on-date filter: a segmented control — Today / Yesterday /
+            Custom. Custom reveals a date picker. The active chip fills brand and
+            shows how many customers checked in that day. */}
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <span className="text-slate-500">Checked in:</span>
+          <div className="inline-flex overflow-hidden rounded-lg border border-slate-300">
+            <DateChip active={todayActive} onClick={() => setPreset(todayActive ? null : dayOffset(0))}>
+              Today
+            </DateChip>
+            <DateChip
+              active={yesterdayActive}
+              onClick={() => setPreset(yesterdayActive ? null : dayOffset(-1))}
+              bordered
+            >
+              Yesterday
+            </DateChip>
+            <DateChip active={customDateOpen} onClick={toggleCustom} bordered>
+              Custom
+            </DateChip>
+          </div>
+          {customDateOpen && (
+            <input
+              type="date"
+              value={checkinDate ? toDateInputValue(checkinDate) : ''}
+              onChange={(e) => setCustomDate(localDateFromInput(e.target.value))}
+              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            />
+          )}
+          {dateFilterActive && (
+            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+              {checkinIdsLoading ? '…' : `${checkinIds?.size ?? 0} checked in`}
+            </span>
+          )}
+        </div>
+
         <label className="ml-auto flex items-center gap-2 text-sm text-slate-600">
           Sort by
           <select
@@ -270,8 +358,7 @@ export function CustomersList() {
                 const badge = birthdayStatusBadge(bday)
                 // Highlight the row while an unclaimed birthday is in-window.
                 const bdayActive = bday !== 'none' && bday !== 'claimed'
-                const tier = customerTier(c.lifetimePoints)
-                const tBadge = tier ? tierBadge(tier) : null
+                const tBadge = tierBadge(customerTier(c.lifetimePoints))
                 return (
                   <tr
                     key={c.id}
@@ -473,6 +560,35 @@ function TrashIcon() {
       <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6" />
       <path d="M10 11v6M14 11v6" />
     </svg>
+  )
+}
+
+// One segment of the "Checked in" date filter. `bordered` draws the left
+// divider between adjacent chips in the segmented group.
+function DateChip({
+  active,
+  onClick,
+  bordered = false,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  bordered?: boolean
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        'px-3 py-1.5 text-sm font-medium transition-colors ' +
+        (bordered ? 'border-l border-slate-300 ' : '') +
+        (active ? 'bg-brand-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50')
+      }
+    >
+      {children}
+    </button>
   )
 }
 

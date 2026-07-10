@@ -138,7 +138,7 @@ export function PhoneEntry() {
   // dismissing message instead of the keypad.
   if (alreadyName != null) {
     return (
-      <KioskLayout showStartOver={false} showPromotions={false}>
+      <KioskLayout showStartOver={false}>
         <div className="flex min-h-full flex-col items-center justify-center px-8 text-center text-white">
           <div className="flex h-32 w-32 items-center justify-center rounded-full bg-amber-500/20">
             <span className="text-7xl text-amber-300">✓</span>
@@ -164,7 +164,7 @@ export function PhoneEntry() {
   return (
     // First step: no back arrow, and it drives its own rewards prompt so the
     // shared header link/banner is suppressed here.
-    <KioskLayout showStartOver={false} showPromotions={false}>
+    <KioskLayout showStartOver={false}>
       <div className="mx-auto grid w-full max-w-6xl min-h-0 flex-1 grid-cols-1 items-start gap-6 overflow-y-auto py-4 lg:grid-cols-2 lg:items-center lg:gap-10 lg:overflow-visible lg:py-0">
         {/* Left: loyalty program info card, always visible. */}
         <div className="order-2 lg:order-1">

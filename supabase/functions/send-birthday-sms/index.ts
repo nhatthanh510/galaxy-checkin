@@ -12,11 +12,16 @@
 
 import { json, renderTemplate, sendSms, serviceClient } from '../_shared/sms.ts'
 
-// Format a loyalty reward the same way the client does (see src/lib/reward.ts).
-function formatReward(rewardType: string | null, rewardValue: number | null): string {
-  const v = rewardValue ?? 0
-  if (rewardType === 'percent') return `${v}% off`
-  return `$${v} off`
+// Birthday discount percent by loyalty tier, derived from lifetime points.
+// Mirrors src/lib/tier.ts (New < 5, Regular 5..19, VIP >= 20) so the SMS says
+// the same percent the kiosk shows.
+function birthdayPercentForTier(
+  lifetimePoints: number,
+  percents: { newPct: number; regularPct: number; vipPct: number },
+): number {
+  if (lifetimePoints < 5) return percents.newPct
+  if (lifetimePoints < 20) return percents.regularPct
+  return percents.vipPct
 }
 
 Deno.serve(async (req: Request) => {
@@ -42,24 +47,25 @@ Deno.serve(async (req: Request) => {
       tpl?.body ?? 'Happy birthday {{name}}! 🎂 Enjoy {{reward}} at Galaxy Nails.'
     const templateId = tpl?.id ?? null
 
-    // The active birthday loyalty program's reward, for {{reward}}.
-    const { data: prog } = await supabase
-      .from('loyalty_program')
-      .select('reward_type, reward_value')
-      .eq('active', true)
-      .eq('trigger_type', 'date_window')
-      .eq('date_anchor', 'birthday')
-      .order('name')
+    // Birthday discount percents by tier — configured on app_settings, applied
+    // per-customer based on their lifetime points (so {{reward}} varies by tier).
+    const { data: settings } = await supabase
+      .from('app_settings')
+      .select('birthday_percent_new, birthday_percent_regular, birthday_percent_vip')
       .limit(1)
       .maybeSingle()
 
-    const reward = prog ? formatReward(prog.reward_type, Number(prog.reward_value)) : 'a treat'
+    const percents = {
+      newPct: Number(settings?.birthday_percent_new ?? 10),
+      regularPct: Number(settings?.birthday_percent_regular ?? 15),
+      vipPct: Number(settings?.birthday_percent_vip ?? 20),
+    }
 
     // Candidates: consented, have a birthday, month+day = today, not texted this
     // year. Birthday stored as YYYY-MM-DD (sentinel year) so match on MM-DD.
     const { data: customers, error } = await supabase
       .from('customer')
-      .select('id, name, phone, birthday, birthday_sms_year')
+      .select('id, name, phone, birthday, birthday_sms_year, lifetime_points')
       .eq('marketing_consent', true)
       .not('birthday', 'is', null)
 
@@ -75,6 +81,8 @@ Deno.serve(async (req: Request) => {
     let sent = 0
     let failed = 0
     for (const c of todays) {
+      const pct = birthdayPercentForTier(Number(c.lifetime_points ?? 0), percents)
+      const reward = `${pct}% off`
       const message = renderTemplate(templateBody, { name: c.name ?? 'there', reward })
       const { status } = await sendSms({
         supabase,

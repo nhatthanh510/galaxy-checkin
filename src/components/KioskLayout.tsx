@@ -3,14 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useKioskFlow } from '../routes/kiosk/useKioskFlow'
 import { useRefreshCustomerOnFocus } from '../routes/kiosk/useRefreshCustomerOnFocus'
 import { useAuth } from '../lib/auth/useAuth'
-import { PromotionsLink } from './PromotionsLink'
 
 interface KioskLayoutOptions {
   showStartOver?: boolean
-  // Show the unified "rewards available" promotions link (when the identified
-  // customer is eligible for any promo). Off on the phone-entry screen, which
-  // drives its own initial redeem prompt.
-  showPromotions?: boolean
 }
 
 interface KioskLayoutProps extends KioskLayoutOptions {
@@ -19,12 +14,9 @@ interface KioskLayoutProps extends KioskLayoutOptions {
 
 // Shared dark kiosk shell. Provides a persistent "Start over" path so no screen
 // is a dead end, and resets flow state on the way out. Steps render their own
-// back arrow (BackButton) next to their title.
-export function KioskLayout({
-  children,
-  showStartOver = true,
-  showPromotions = true,
-}: KioskLayoutProps) {
+// back arrow (BackButton) next to their title. Rewards are offered on the
+// success screen (after check-in), not from this shell.
+export function KioskLayout({ children, showStartOver = true }: KioskLayoutProps) {
   const navigate = useNavigate()
   const { reset } = useKioskFlow()
   const { isAdmin, signOut } = useAuth()
@@ -52,8 +44,6 @@ export function KioskLayout({
           <img src="/logo.png" alt="Galaxy Nails" className="h-6 w-auto sm:h-8" />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4">
-          {/* Unified rewards link (only shows when any promo is eligible). */}
-          {showPromotions && <PromotionsLink />}
           {showStartOver && (
             <button
               type="button"

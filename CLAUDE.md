@@ -84,11 +84,14 @@ Each step is its own route/screen. Dark theme, large touch targets, big NEXT but
    you might have to wait…". Grid of technician avatars (initial in a purple circle +
    name). Buttons: **SKIP** or **NEXT** (tech is optional).
 5. **Success** — green check, "You have checked in successfully!", and the customer's
-   points ("You had X points"). Auto-returns to the phone-entry screen after a few
-   seconds so the kiosk is ready for the next person.
+   points. The check-in is created here (status `waiting`, +1 point), then any reward
+   the customer is now eligible for (points redeem / birthday / standing promo) is shown
+   **inline with a Redeem/Claim button**, evaluated against the post-check-in balance —
+   so a customer who arrives at 9 points and needs 10 checks in to 10 and can redeem
+   immediately. Auto-returns to the phone-entry screen after a few seconds.
 
 On success, create the `checkin` with status `waiting` (creating the customer first if
-new), and fire the confirmation SMS.
+new), and fire the confirmation SMS. Redeeming a reward keeps the visit's +1 point.
 
 ### Other flows
 
@@ -166,15 +169,27 @@ transitive dev dep declares an overly narrow Node range; installs work with plai
     `kind='marketing'`.
   - **Birthday auto-SMS**: a `send-birthday-sms` Edge Function texts customers whose birthday
     is today (consented, not already texted this year via `customer.birthday_sms_year`),
-    interpolating the active birthday program's reward into the `kind='birthday'` template. A
-    daily **pg_cron** job (`daily-birthday-sms`, 09:00 UTC, migration `0004`) invokes it via
-    `pg_net`, reading the function URL + service-role key from the `app_secret` table. To go
-    live: `supabase functions deploy send-birthday-sms` and
-    `insert into app_secret values ('edge_url','https://<ref>.functions.supabase.co'),
+    interpolating the customer's **tier-based birthday percent** (see below) into the
+    `kind='birthday'` template. A daily **pg_cron** job (`daily-birthday-sms`, 09:00 UTC,
+    migration `0004`) invokes it via `pg_net`, reading the function URL + service-role key
+    from the `app_secret` table. To go live: `supabase functions deploy send-birthday-sms`
+    and `insert into app_secret values ('edge_url','https://<ref>.functions.supabase.co'),
     ('service_role_key','<service-role-key>');`
   - **Loyalty**: multiple active programs supported (kiosk carousel + one redeemable promo
     each); rewards are **fixed `$` or `percent` off** (`reward_type`/`reward_value`, see
-    `formatReward` in `src/lib/reward.ts`). Points are awarded +1 per check-in.
+    `formatReward` in `src/lib/reward.ts`). Points are awarded +1 per check-in —
+    including visits where a points reward is redeemed (redeeming keeps the +1).
+    A points reward is redeemable at the threshold (`balance >= pointsPerReward`)
+    on both the kiosk and admin.
+  - **Customer tiers** (`src/lib/tier.ts`, derived from `lifetime_points`): **New** < 5,
+    **Regular** 5–19, **VIP** ≥ 20. Shown as a badge in the admin customer list/detail.
+  - **Birthday discount by tier**: the birthday (`date_window`) reward's percent off is chosen
+    by the customer's tier, **not** by the program's `reward_value` (which is ignored for
+    birthday programs). The three percents (defaults New 10% / Regular 15% / VIP 20%) live on
+    `app_settings` (`birthday_percent_{new,regular,vip}`, migration `0015`) and are editable on
+    the admin **Settings** page. `useEligiblePromotions` (kiosk) and `send-birthday-sms` both
+    read them via `birthdayPercentForTier`, so the kiosk reward card, the admin customer detail
+    (a "🎂 N% off birthday" chip), and the birthday SMS all show the same percent.
   - **Not yet built**: staff live queue / status transitions, and awarding points on
     `completed` (points are currently granted at check-in, not completion).
 - The directory layout above still holds, now with `src/routes/admin/` and `src/lib/auth/`.

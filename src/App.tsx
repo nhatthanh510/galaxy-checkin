@@ -7,7 +7,6 @@ import { KioskFlowProvider } from './routes/kiosk/FlowContext'
 import { PhoneEntry } from './routes/kiosk/PhoneEntry'
 import { NameEntry } from './routes/kiosk/NameEntry'
 import { ServiceSelection } from './routes/kiosk/ServiceSelection'
-import { RewardStep } from './routes/kiosk/RewardStep'
 import { Success } from './routes/kiosk/Success'
 import { Login } from './routes/Login'
 import { AdminLayout } from './routes/admin/AdminLayout'
@@ -57,7 +56,6 @@ export default function App() {
               <Route path="/" element={<PhoneEntry />} />
               <Route path="/kiosk/name" element={<NameEntry />} />
               <Route path="/kiosk/services" element={<ServiceSelection />} />
-              <Route path="/kiosk/reward" element={<RewardStep />} />
               <Route path="/kiosk/success" element={<Success />} />
             </Route>
 

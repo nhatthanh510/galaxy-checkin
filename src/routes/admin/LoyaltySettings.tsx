@@ -4,10 +4,12 @@ import {
   useCreateLoyaltyProgram,
   useUpdateLoyaltyProgramCrud,
   useDeleteLoyaltyProgram,
+  useSettings,
   type LoyaltyProgramInput,
 } from '../../lib/queries'
 import type { LoyaltyProgram, PromotionTrigger, RewardType } from '../../types'
 import { formatReward } from '../../lib/reward'
+import { birthdayTierSummary } from '../../lib/tier'
 
 // Human labels for each trigger, used in the list, view, and form.
 const TRIGGER_LABELS: Record<PromotionTrigger, string> = {
@@ -21,7 +23,7 @@ function earnSummary(p: LoyaltyProgram): string {
   const reward = formatReward(p.rewardType, p.rewardValue)
   switch (p.triggerType) {
     case 'date_window':
-      return `🎂 Birthday → ${reward}`
+      return '🎂 Birthday → % off by tier'
     case 'always':
       return `Any visit → ${reward}`
     default:
@@ -179,10 +181,17 @@ function ProgramView({ program, onBack }: { program: LoyaltyProgram; onBack: () 
             value={`${program.windowBeforeDays} days before → ${program.windowAfterDays} days after birthday`}
           />
         )}
-        <Field
-          label="Reward"
-          value={formatReward(program.rewardType, program.rewardValue)}
-        />
+        {program.triggerType === 'date_window' ? (
+          <Field
+            label="Reward"
+            value="Percent off by customer tier — set on the Settings page"
+          />
+        ) : (
+          <Field
+            label="Reward"
+            value={formatReward(program.rewardType, program.rewardValue)}
+          />
+        )}
         <Field label="Status" value={program.active ? 'Active' : 'Inactive'} />
       </div>
     </div>
@@ -208,7 +217,16 @@ function ProgramForm({
 }) {
   const create = useCreateLoyaltyProgram()
   const update = useUpdateLoyaltyProgramCrud()
+  const { data: settings } = useSettings()
   const isEdit = Boolean(program)
+
+  // For birthday programs the description is auto-generated from the tier
+  // percents (Settings page), so it can never go stale.
+  const tierPercents = {
+    new: settings?.birthdayPercentNew ?? 10,
+    regular: settings?.birthdayPercentRegular ?? 15,
+    vip: settings?.birthdayPercentVip ?? 20,
+  }
 
   const [name, setName] = useState(program?.name ?? '')
   const [description, setDescription] = useState(program?.description ?? '')
@@ -228,7 +246,9 @@ function ProgramForm({
   const onSubmit = async () => {
     const input: LoyaltyProgramInput = {
       name: name.trim(),
-      description: description.trim(),
+      // Birthday: store the tier-percent summary; other triggers: the typed text.
+      description:
+        triggerType === 'date_window' ? birthdayTierSummary(tierPercents) : description.trim(),
       triggerType,
       // Only date-window triggers anchor on a customer date (birthday for now).
       dateAnchor: triggerType === 'date_window' ? 'birthday' : null,
@@ -264,15 +284,29 @@ function ProgramForm({
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
           />
         </label>
-        <label className="block">
-          <span className="text-sm font-medium text-slate-600">Description</span>
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="10 points get $10 off"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-          />
-        </label>
+        {/* Birthday programs auto-generate their description from the tier
+            percents, so the free-text field is hidden for them. */}
+        {triggerType === 'date_window' ? (
+          <div className="block">
+            <span className="text-sm font-medium text-slate-600">Description</span>
+            <p className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              {birthdayTierSummary(tierPercents)}
+              <span className="mt-1 block text-xs text-slate-400">
+                Auto-generated from the tier percents on the Settings page.
+              </span>
+            </p>
+          </div>
+        ) : (
+          <label className="block">
+            <span className="text-sm font-medium text-slate-600">Description</span>
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="10 points get $10 off"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            />
+          </label>
+        )}
         {/* Trigger: how the reward becomes claimable. */}
         <label className="block">
           <span className="text-sm font-medium text-slate-600">How is it earned?</span>
@@ -332,28 +366,40 @@ function ProgramForm({
           </div>
         )}
 
-        <label className="block">
-          <span className="text-sm font-medium text-slate-600">Reward type</span>
-          <select
-            value={rewardType}
-            onChange={(e) => setRewardType(e.target.value as RewardType)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-          >
-            <option value="fixed">Fixed amount ($)</option>
-            <option value="percent">Percentage (%)</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-sm font-medium text-slate-600">
-            {rewardType === 'percent' ? 'Reward percentage (%)' : 'Reward amount ($)'}
-          </span>
-          <input
-            type="number"
-            value={rewardValue}
-            onChange={(e) => setRewardValue(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-          />
-        </label>
+        {/* Birthday rewards derive their percent from the customer's tier — the
+            reward type/amount inputs don't apply, so hide them and explain. */}
+        {triggerType === 'date_window' ? (
+          <div className="rounded-lg bg-pink-50 px-4 py-3 text-sm text-pink-700">
+            <span className="font-medium">Reward: percent off by customer tier.</span> Birthday
+            discounts use the New / Regular / VIP percentages configured on the{' '}
+            <span className="font-medium">Settings</span> page, so there's nothing to set here.
+          </div>
+        ) : (
+          <>
+            <label className="block">
+              <span className="text-sm font-medium text-slate-600">Reward type</span>
+              <select
+                value={rewardType}
+                onChange={(e) => setRewardType(e.target.value as RewardType)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+              >
+                <option value="fixed">Fixed amount ($)</option>
+                <option value="percent">Percentage (%)</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium text-slate-600">
+                {rewardType === 'percent' ? 'Reward percentage (%)' : 'Reward amount ($)'}
+              </span>
+              <input
+                type="number"
+                value={rewardValue}
+                onChange={(e) => setRewardValue(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+              />
+            </label>
+          </>
+        )}
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
