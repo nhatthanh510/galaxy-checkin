@@ -4,9 +4,9 @@
 // Column order shared by customer export + import.
 //
 // The first four are the original required columns; the trailing three are
-// optional (older 4-column CSVs still import). `birthday` is "YYYY-MM-DD" (the
-// sentinel year 2000 is fine — only day+month are used); `marketing_consent`
-// accepts 1/0, true/false, yes/no.
+// optional (older 4-column CSVs still import). `birthday` is AU day-first
+// "DD/MM" on export (legacy "YYYY-MM-DD" still accepted on import — only
+// day+month are used); `marketing_consent` accepts 1/0, true/false, yes/no.
 export const CSV_HEADERS = [
   'phone',
   'name',

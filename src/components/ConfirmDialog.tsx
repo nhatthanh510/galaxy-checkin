@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -43,9 +44,11 @@ export function ConfirmDialog({
 
   if (!open) return null
 
-  return (
+  // Portal to <body> so the dialog escapes whatever container renders it (e.g. a
+  // table <td>), whose text-align/width would otherwise skew the card's layout.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 text-left"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
@@ -81,6 +84,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

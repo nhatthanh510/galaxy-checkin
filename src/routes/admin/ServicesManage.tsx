@@ -10,6 +10,10 @@ import {
 import type { Service } from '../../types'
 import { Pagination } from '../../components/Pagination'
 import { usePagination } from '../../components/usePagination'
+import { useConfirm } from '../../components/useConfirm'
+import { TextInput } from '../../components/ui/TextInput'
+import { Button } from '../../components/ui/Button'
+import { Card } from '../../components/ui/Card'
 
 type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; service: Service }
 
@@ -42,12 +46,7 @@ export function ServicesManage() {
             Only <span className="font-medium">active</span> services appear on the kiosk.
           </p>
         </div>
-        <button
-          onClick={() => setMode({ kind: 'create' })}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500"
-        >
-          New service
-        </button>
+        <Button onClick={() => setMode({ kind: 'create' })}>New service</Button>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -89,8 +88,21 @@ export function ServicesManage() {
 
 function ServiceRow({ service, onEdit }: { service: Service; onEdit: () => void }) {
   const del = useDeleteService()
-  const onDelete = () => {
-    if (window.confirm(`Delete "${service.name}"? This cannot be undone.`)) {
+  const { confirm, dialog } = useConfirm()
+  const onDelete = async () => {
+    if (
+      await confirm({
+        title: 'Delete service?',
+        message: (
+          <>
+            Delete <span className="font-semibold text-slate-800">{service.name}</span>? This
+            cannot be undone.
+          </>
+        ),
+        confirmLabel: 'Delete',
+        danger: true,
+      })
+    ) {
       del.mutate(service.id)
     }
   }
@@ -116,6 +128,7 @@ function ServiceRow({ service, onEdit }: { service: Service; onEdit: () => void 
         >
           Delete
         </button>
+        {dialog}
       </td>
     </tr>
   )
@@ -167,14 +180,14 @@ function ServiceForm({ service, onDone }: { service?: Service; onDone: () => voi
       </button>
       <h1 className="mt-2 text-2xl font-bold">{isEdit ? 'Edit service' : 'New service'}</h1>
 
-      <div className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-white p-6">
+      <Card className="mt-6 space-y-4">
         <label className="block">
           <span className="text-sm font-medium text-slate-600">Name</span>
-          <input
+          <TextInput
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Regular Manicure"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            className="mt-1"
           />
         </label>
         <label className="block">
@@ -204,19 +217,15 @@ function ServiceForm({ service, onDone }: { service?: Service; onDone: () => voi
         </label>
 
         <div className="flex items-center gap-3 pt-2">
-          <button
-            onClick={onSubmit}
-            disabled={pending || !name.trim()}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
-          >
+          <Button onClick={onSubmit} disabled={pending || !name.trim()}>
             {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Create'}
-          </button>
+          </Button>
           <button onClick={onDone} className="text-sm text-slate-500 hover:text-slate-700">
             Cancel
           </button>
           {err && <span className="text-sm text-red-600">{err.message}</span>}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

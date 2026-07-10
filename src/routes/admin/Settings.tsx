@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useSettings, useUpdateSettings } from '../../lib/queries'
 import type { AppSettings } from '../../types'
+import { TextInput } from '../../components/ui/TextInput'
+import { Button } from '../../components/ui/Button'
+import { Card } from '../../components/ui/Card'
 
 // Admin: app-wide settings. Currently the birthday "highlight" window used to
 // flag upcoming-birthday customers with a 🎂 badge in the admin list/detail.
@@ -67,7 +70,7 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
   }
 
   return (
-    <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+    <Card className="mt-6">
       <h2 className="text-lg font-semibold">Birthday highlight window</h2>
       <p className="mt-1 text-sm text-slate-500">
         Flags customers with a 🎂 badge in the admin customer list and detail when their
@@ -79,22 +82,22 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
       <div className="mt-4 grid grid-cols-2 gap-4">
         <label className="block">
           <span className="text-sm font-medium text-slate-600">Days before</span>
-          <input
+          <TextInput
             type="number"
             min={0}
             value={before}
             onChange={(e) => setBefore(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            className="mt-1"
           />
         </label>
         <label className="block">
           <span className="text-sm font-medium text-slate-600">Days after</span>
-          <input
+          <TextInput
             type="number"
             min={0}
             value={after}
             onChange={(e) => setAfter(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            className="mt-1"
           />
         </label>
       </div>
@@ -110,47 +113,43 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
       <div className="mt-4 grid grid-cols-3 gap-4">
         <label className="block">
           <span className="text-sm font-medium text-slate-600">New (%)</span>
-          <input
+          <TextInput
             type="number"
             min={0}
             max={100}
             value={pctNew}
             onChange={(e) => setPctNew(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            className="mt-1"
           />
         </label>
         <label className="block">
           <span className="text-sm font-medium text-slate-600">Regular (%)</span>
-          <input
+          <TextInput
             type="number"
             min={0}
             max={100}
             value={pctRegular}
             onChange={(e) => setPctRegular(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            className="mt-1"
           />
         </label>
         <label className="block">
           <span className="text-sm font-medium text-slate-600">VIP (%)</span>
-          <input
+          <TextInput
             type="number"
             min={0}
             max={100}
             value={pctVip}
             onChange={(e) => setPctVip(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            className="mt-1"
           />
         </label>
       </div>
 
       <div className="mt-4 flex items-center gap-3">
-        <button
-          onClick={onSave}
-          disabled={update.isPending || !dirty}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
-        >
+        <Button onClick={onSave} disabled={update.isPending || !dirty}>
           {update.isPending ? 'Saving…' : 'Save'}
-        </button>
+        </Button>
         {!dirty && !saved && !update.isPending && (
           <span className="text-sm text-slate-400">No changes to save</span>
         )}
@@ -161,6 +160,6 @@ function SettingsForm({ settings }: { settings: AppSettings }) {
         )}
         {update.error && <span className="text-sm text-red-600">{update.error.message}</span>}
       </div>
-    </div>
+    </Card>
   )
 }

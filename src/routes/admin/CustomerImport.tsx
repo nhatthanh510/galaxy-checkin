@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useCustomers, useUpsertCustomers, type ImportCustomer } from '../../lib/queries'
 import { CSV_HEADERS, parseCsv } from '../../lib/csv'
 import { normalizePhone } from '../../lib/phone'
-import { formatBirthday } from '../../lib/birthday'
+import { formatBirthday, partsToDateString } from '../../lib/birthday'
+import { Button } from '../../components/ui/Button'
 
 interface PreviewRow {
   row: ImportCustomer
@@ -89,7 +90,7 @@ function buildPreview(text: string, existingPhones: Set<string>): PreviewRow[] {
     if (birthday === INVALID) {
       return {
         status: 'error',
-        error: `Invalid birthday "${rawBirthday}" (use YYYY-MM-DD)`,
+        error: `Invalid birthday "${rawBirthday}" (use DD/MM)`,
         row: { phone, name: name.trim(), pointsBalance, visitCount, lifetimePoints },
       }
     }
@@ -135,16 +136,29 @@ function parseTimestamp(raw: string): string | undefined | typeof INVALID {
   return new Date(ms).toISOString()
 }
 
-// Accept "YYYY-MM-DD" (only day+month matter downstream). Empty => undefined.
+// Accept the AU day-first export format "DD/MM" (e.g. "06/07"), or legacy
+// "YYYY-MM-DD" (old exports). Only day+month matter — normalized to the stored
+// sentinel-year "2000-MM-DD". Empty => undefined; anything else => INVALID.
 function parseBirthday(raw: string): string | null | undefined | typeof INVALID {
   const s = raw.trim()
   if (s === '') return undefined
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
-  if (!m) return INVALID
-  const month = Number(m[2])
-  const day = Number(m[3])
+
+  let day: number
+  let month: number
+  const ddmm = /^(\d{1,2})\/(\d{1,2})$/.exec(s)
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+  if (ddmm) {
+    day = Number(ddmm[1])
+    month = Number(ddmm[2])
+  } else if (iso) {
+    month = Number(iso[2])
+    day = Number(iso[3])
+  } else {
+    return INVALID
+  }
+
   if (month < 1 || month > 12 || day < 1 || day > 31) return INVALID
-  return s
+  return partsToDateString({ day, month })
 }
 
 // Accept 1/0, true/false, yes/no (case-insensitive). Empty => undefined.
@@ -270,13 +284,9 @@ export function CustomerImport() {
           </div>
 
           <div className="mt-4 flex items-center gap-3">
-            <button
-              onClick={onConfirm}
-              disabled={valid.length === 0 || upsert.isPending}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
-            >
+            <Button onClick={onConfirm} disabled={valid.length === 0 || upsert.isPending}>
               {upsert.isPending ? 'Importing…' : `Import ${valid.length} rows`}
-            </button>
+            </Button>
             {upsert.error && <span className="text-sm text-red-600">{upsert.error.message}</span>}
           </div>
         </>

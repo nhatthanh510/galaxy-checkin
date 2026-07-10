@@ -7,6 +7,10 @@ import {
   type ServiceGroupInput,
 } from '../../lib/queries'
 import type { ServiceGroup } from '../../types'
+import { useConfirm } from '../../components/useConfirm'
+import { TextInput } from '../../components/ui/TextInput'
+import { Button } from '../../components/ui/Button'
+import { Card } from '../../components/ui/Card'
 
 type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; group: ServiceGroup }
 
@@ -33,12 +37,7 @@ export function GroupsManage() {
             Services are organised into these groups on the kiosk.
           </p>
         </div>
-        <button
-          onClick={() => setMode({ kind: 'create' })}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500"
-        >
-          New group
-        </button>
+        <Button onClick={() => setMode({ kind: 'create' })}>New group</Button>
       </div>
 
       <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
@@ -70,11 +69,20 @@ export function GroupsManage() {
 
 function GroupRow({ group, onEdit }: { group: ServiceGroup; onEdit: () => void }) {
   const del = useDeleteServiceGroup()
-  const onDelete = () => {
+  const { confirm, dialog } = useConfirm()
+  const onDelete = async () => {
     if (
-      window.confirm(
-        `Delete "${group.name}"? Services in this group will become ungrouped.`,
-      )
+      await confirm({
+        title: 'Delete group?',
+        message: (
+          <>
+            Delete <span className="font-semibold text-slate-800">{group.name}</span>? Services in
+            this group will become ungrouped.
+          </>
+        ),
+        confirmLabel: 'Delete',
+        danger: true,
+      })
     ) {
       del.mutate(group.id)
     }
@@ -100,6 +108,7 @@ function GroupRow({ group, onEdit }: { group: ServiceGroup; onEdit: () => void }
         >
           Delete
         </button>
+        {dialog}
       </td>
     </tr>
   )
@@ -129,14 +138,14 @@ function GroupForm({ group, onDone }: { group?: ServiceGroup; onDone: () => void
       </button>
       <h1 className="mt-2 text-2xl font-bold">{isEdit ? 'Edit group' : 'New group'}</h1>
 
-      <div className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-white p-6">
+      <Card className="mt-6 space-y-4">
         <label className="block">
           <span className="text-sm font-medium text-slate-600">Name</span>
-          <input
+          <TextInput
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Manicure"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            className="mt-1"
           />
         </label>
         <label className="flex items-center gap-2">
@@ -150,19 +159,15 @@ function GroupForm({ group, onDone }: { group?: ServiceGroup; onDone: () => void
         </label>
 
         <div className="flex items-center gap-3 pt-2">
-          <button
-            onClick={onSubmit}
-            disabled={pending || !name.trim()}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
-          >
+          <Button onClick={onSubmit} disabled={pending || !name.trim()}>
             {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Create'}
-          </button>
+          </Button>
           <button onClick={onDone} className="text-sm text-slate-500 hover:text-slate-700">
             Cancel
           </button>
           {err && <span className="text-sm text-red-600">{err.message}</span>}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

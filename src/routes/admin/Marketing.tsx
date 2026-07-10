@@ -10,6 +10,9 @@ import type { Customer, SmsTemplate } from '../../types'
 import { formatReward } from '../../lib/reward'
 import { formatPhone } from '../../lib/phone'
 import { renderTemplate, templateValues, smsSegments } from '../../lib/sms'
+import { useConfirm } from '../../components/useConfirm'
+import { Button } from '../../components/ui/Button'
+import { Card } from '../../components/ui/Card'
 
 // Admin: compose and send a marketing SMS campaign. Recipients are restricted to
 // customers who opted in (marketing_consent), per SMS marketing law.
@@ -18,6 +21,7 @@ export function Marketing() {
   const { data: templates, isLoading: tplLoading } = useSmsTemplates()
   const { data: programs } = useActiveLoyaltyPrograms()
   const send = useSendCampaign()
+  const { confirm, dialog } = useConfirm()
 
   const [templateId, setTemplateId] = useState<string>('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -57,12 +61,17 @@ export function Marketing() {
 
   const onSend = async () => {
     if (!template || recipients.length === 0) return
-    if (
-      !window.confirm(
-        `Send "${template.name}" to ${recipients.length} customer${recipients.length === 1 ? '' : 's'}?`,
-      )
-    )
-      return
+    const ok = await confirm({
+      title: 'Send campaign?',
+      message: (
+        <>
+          Send <span className="font-semibold text-slate-800">{template.name}</span> to{' '}
+          {recipients.length} customer{recipients.length === 1 ? '' : 's'}?
+        </>
+      ),
+      confirmLabel: 'Send',
+    })
+    if (!ok) return
     setResult(null)
     const res = await send.mutateAsync({ template, recipients, reward })
     setResult(res)
@@ -88,7 +97,7 @@ export function Marketing() {
       ) : (
         <>
           {/* Template picker + preview */}
-          <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6">
+          <Card className="mt-6">
             <label className="block">
               <span className="text-sm font-medium text-slate-600">Template</span>
               <select
@@ -105,7 +114,7 @@ export function Marketing() {
               </select>
             </label>
             {template && <Preview template={template} sample={consented[0]} reward={reward} />}
-          </div>
+          </Card>
 
           {/* Recipient picker */}
           <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -116,13 +125,14 @@ export function Marketing() {
                   ({selected.size} of {consented.length} selected)
                 </span>
               </h2>
-              <button
+              <Button
+                variant="secondary"
                 onClick={toggleAll}
                 disabled={consented.length === 0}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                className="px-3 py-1.5 font-medium text-slate-600"
               >
                 {allSelected ? 'Clear all' : 'Select all'}
-              </button>
+              </Button>
             </div>
             {consented.length === 0 ? (
               <p className="p-6 text-sm text-slate-400">
@@ -148,15 +158,15 @@ export function Marketing() {
 
           {/* Send */}
           <div className="mt-6 flex items-center gap-3">
-            <button
+            <Button
               onClick={onSend}
               disabled={!template || recipients.length === 0 || send.isPending}
-              className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
+              className="px-5 py-2.5"
             >
               {send.isPending
                 ? `Sending… `
                 : `Send to ${recipients.length} customer${recipients.length === 1 ? '' : 's'}`}
-            </button>
+            </Button>
             {send.error && <span className="text-sm text-red-600">{send.error.message}</span>}
             {result && (
               <span className="text-sm text-emerald-600">
@@ -167,6 +177,7 @@ export function Marketing() {
           </div>
         </>
       )}
+      {dialog}
     </div>
   )
 }

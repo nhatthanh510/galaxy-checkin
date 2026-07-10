@@ -8,6 +8,10 @@ import {
 } from '../../lib/queries'
 import type { NotificationKind, SmsTemplate } from '../../types'
 import { renderTemplate, smsSegments } from '../../lib/sms'
+import { useConfirm } from '../../components/useConfirm'
+import { TextInput } from '../../components/ui/TextInput'
+import { Button } from '../../components/ui/Button'
+import { Card } from '../../components/ui/Card'
 
 type Mode =
   | { kind: 'list' }
@@ -46,12 +50,7 @@ export function SmsTemplates() {
             and <code className="rounded bg-slate-100 px-1">{'{{reward}}'}</code> placeholders.
           </p>
         </div>
-        <button
-          onClick={() => setMode({ kind: 'create' })}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500"
-        >
-          New template
-        </button>
+        <Button onClick={() => setMode({ kind: 'create' })}>New template</Button>
       </div>
 
       <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
@@ -84,8 +83,23 @@ export function SmsTemplates() {
 
 function TemplateRow({ template, onEdit }: { template: SmsTemplate; onEdit: () => void }) {
   const del = useDeleteSmsTemplate()
-  const onDelete = () => {
-    if (window.confirm(`Delete "${template.name}"?`)) del.mutate(template.id)
+  const { confirm, dialog } = useConfirm()
+  const onDelete = async () => {
+    if (
+      await confirm({
+        title: 'Delete template?',
+        message: (
+          <>
+            Delete <span className="font-semibold text-slate-800">{template.name}</span>? This
+            cannot be undone.
+          </>
+        ),
+        confirmLabel: 'Delete',
+        danger: true,
+      })
+    ) {
+      del.mutate(template.id)
+    }
   }
   return (
     <tr className="border-b border-slate-100 last:border-0 align-top">
@@ -112,6 +126,7 @@ function TemplateRow({ template, onEdit }: { template: SmsTemplate; onEdit: () =
         >
           Delete
         </button>
+        {dialog}
       </td>
     </tr>
   )
@@ -146,14 +161,14 @@ function TemplateForm({ template, onDone }: { template?: SmsTemplate; onDone: ()
       </button>
       <h1 className="mt-2 text-2xl font-bold">{isEdit ? 'Edit template' : 'New template'}</h1>
 
-      <div className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-white p-6">
+      <Card className="mt-6 space-y-4">
         <label className="block">
           <span className="text-sm font-medium text-slate-600">Template name</span>
-          <input
+          <TextInput
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Spring promo"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+            className="mt-1"
           />
         </label>
 
@@ -193,19 +208,15 @@ function TemplateForm({ template, onDone }: { template?: SmsTemplate; onDone: ()
         )}
 
         <div className="flex items-center gap-3 pt-2">
-          <button
-            onClick={onSubmit}
-            disabled={pending || !name.trim() || !body.trim()}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-50"
-          >
+          <Button onClick={onSubmit} disabled={pending || !name.trim() || !body.trim()}>
             {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Create'}
-          </button>
+          </Button>
           <button onClick={onDone} className="text-sm text-slate-500 hover:text-slate-700">
             Cancel
           </button>
           {err && <span className="text-sm text-red-600">{err.message}</span>}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

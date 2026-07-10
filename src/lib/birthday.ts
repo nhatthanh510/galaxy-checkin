@@ -73,7 +73,8 @@ export function birthdayDayDiff(birthday: string | null, today: Date): number | 
 // delegate here so existing birthday callers keep working.
 
 // Is `anchorDate` within [daysBefore, daysAfter] of `today` (ignoring year)?
-export function isDateInWindow(
+// Module-internal — the exported wrappers below are the public surface.
+function isDateInWindow(
   anchorDate: string | null,
   today: Date,
   daysBefore: number,
@@ -99,7 +100,7 @@ export function shouldClaimDateWindow(
 // --- Birthday wrappers (thin aliases over the generic helpers) --------------
 
 // Is `birthday` within [daysBefore, daysAfter] of `today` (ignoring year)?
-export function isBirthdaySoon(
+function isBirthdaySoon(
   birthday: string | null,
   today: Date,
   daysBefore: number,
@@ -166,4 +167,16 @@ export function formatBirthday(birthday: string | null): string {
   const p = dateStringToParts(birthday)
   if (p.month == null || p.day == null) return '—'
   return `${p.day} ${MONTHS[p.month - 1]}`
+}
+
+// Birthday for CSV export in AU day-first format "DD/MM" (e.g. "06/07" for
+// 6 July). Only day+month — the stored sentinel year is never emitted. Empty
+// string when there's no birthday. The CSV importer accepts this back (see
+// parseBirthday in CustomerImport).
+export function formatBirthdayCsv(birthday: string | null): string {
+  const p = dateStringToParts(birthday)
+  if (p.month == null || p.day == null) return ''
+  const dd = String(p.day).padStart(2, '0')
+  const mm = String(p.month).padStart(2, '0')
+  return `${dd}/${mm}`
 }

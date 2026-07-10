@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   useCustomers,
@@ -14,20 +14,20 @@ import {
   birthdayStatus,
   birthdayStatusBadge,
   formatBirthday,
+  formatBirthdayCsv,
 } from '../../lib/birthday'
 import { customerTier, tierBadge } from '../../lib/tier'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { Button } from '../../components/ui/Button'
+import { TextInput } from '../../components/ui/TextInput'
 import type { Customer } from '../../types'
-
-// Sort options exposed in the dropdown; all order high→low (most recent first
-// for last-visited). Name is the tiebreaker so paging stays deterministic.
-type SortKey = 'lastVisit' | 'points' | 'lifetime' | 'visits'
-const SORT_LABELS: Record<SortKey, string> = {
-  lastVisit: 'Last visited',
-  points: 'Points balance',
-  lifetime: 'Lifetime points',
-  visits: 'Visit count',
-}
+import {
+  ELLIPSIS,
+  pageNumbers,
+  SORT_LABELS,
+  type SortKey,
+} from './customersListHelpers'
+import { DateChip, TrashIcon } from './customersListParts'
 
 export function CustomersList() {
   const { data: customers, isLoading, error } = useCustomers()
@@ -154,7 +154,8 @@ export function CustomersList() {
         c.pointsBalance,
         c.visitCount,
         c.lifetimePoints,
-        c.birthday ?? '',
+        // Day-first "DD/MM" — never emit the stored sentinel year.
+        formatBirthdayCsv(c.birthday),
         c.marketingConsent ? 1 : 0,
         c.lastVisitAt ?? '',
       ]),
@@ -216,25 +217,21 @@ export function CustomersList() {
           >
             Import CSV
           </Link>
-          <button
-            onClick={onExport}
-            disabled={!customers?.length}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          >
+          <Button variant="secondary" onClick={onExport} disabled={!customers?.length}>
             Export CSV
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <input
+        <TextInput
           value={search}
           onChange={(e) => {
             setSearch(e.target.value)
             setPage(0)
           }}
           placeholder="Search by name or phone…"
-          className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+          className="max-w-md"
         />
         {threshold != null && (
           <label className="flex items-center gap-2 text-sm text-slate-600">
@@ -541,72 +538,4 @@ export function CustomersList() {
       />
     </div>
   )
-}
-
-// Trash/delete glyph for the per-row delete action.
-function TrashIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-5 w-5"
-      aria-hidden="true"
-    >
-      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6" />
-      <path d="M10 11v6M14 11v6" />
-    </svg>
-  )
-}
-
-// One segment of the "Checked in" date filter. `bordered` draws the left
-// divider between adjacent chips in the segmented group.
-function DateChip({
-  active,
-  onClick,
-  bordered = false,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  bordered?: boolean
-  children: ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={
-        'px-3 py-1.5 text-sm font-medium transition-colors ' +
-        (bordered ? 'border-l border-slate-300 ' : '') +
-        (active ? 'bg-brand-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50')
-      }
-    >
-      {children}
-    </button>
-  )
-}
-
-// Sentinel for a gap in the page list.
-const ELLIPSIS = -1
-
-// Build a compact page list around the current page: always the first and last
-// page, the current ±1, and ellipsis sentinels for the gaps. Zero-based indices.
-function pageNumbers(current: number, count: number): number[] {
-  const pages = new Set<number>([0, count - 1, current])
-  if (current - 1 > 0) pages.add(current - 1)
-  if (current + 1 < count - 1) pages.add(current + 1)
-  const sorted = [...pages].filter((n) => n >= 0 && n < count).sort((a, b) => a - b)
-
-  const out: number[] = []
-  for (let i = 0; i < sorted.length; i++) {
-    if (i > 0 && sorted[i] - sorted[i - 1] > 1) out.push(ELLIPSIS)
-    out.push(sorted[i])
-  }
-  return out
 }
