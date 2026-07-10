@@ -37,7 +37,11 @@ function buildPreview(text: string, existingPhones: Set<string>): PreviewRow[] {
       rawBirthday = '',
       rawConsent = '',
       rawLastVisited = '',
+      rawNotes = '',
     ] = cells
+    // Cap to the same 140-char limit the profile editor + DB enforce, so an
+    // over-long imported note can't fail the whole batch on the DB CHECK.
+    const notes = rawNotes.trim().slice(0, 140)
     const phone = normalizePhone(rawPhone)
 
     // A phone is still required as the dedupe key, but it may be any non-empty
@@ -118,6 +122,7 @@ function buildPreview(text: string, existingPhones: Set<string>): PreviewRow[] {
         birthday,
         marketingConsent,
         lastVisited,
+        notes: notes || undefined,
       },
     }
   })

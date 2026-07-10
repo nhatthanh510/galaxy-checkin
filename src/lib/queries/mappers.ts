@@ -26,6 +26,7 @@ export function mapCustomer(row: CustomerRow): Customer {
     birthday: row.birthday ?? null,
     birthdayRedeemedYear: row.birthday_redeemed_year ?? null,
     marketingConsent: row.marketing_consent ?? false,
+    notes: row.notes ?? '',
   }
 }
 

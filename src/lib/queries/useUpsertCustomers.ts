@@ -17,6 +17,7 @@ export interface ImportCustomer {
   // records a synthetic "completed" checkin at this time so it appears in the
   // customer's Visit History.
   lastVisited?: string | null
+  notes?: string // staff-only freeform notes
 }
 
 // Send at most this many rows per RPC call so the JSON payload stays manageable.
@@ -41,6 +42,8 @@ export function useUpsertCustomers() {
           birthday: r.birthday ?? null,
           marketing_consent: r.marketingConsent ?? false,
           last_visited: r.lastVisited ?? null,
+          // Omit when unset so the RPC leaves existing notes untouched.
+          notes: r.notes ?? '',
         }))
         const { data, error } = await getSupabase().rpc('import_customers', { p_rows: payload })
         if (error) throw error

@@ -3,10 +3,11 @@
 
 // Column order shared by customer export + import.
 //
-// The first four are the original required columns; the trailing three are
-// optional (older 4-column CSVs still import). `birthday` is AU day-first
-// "DD/MM" on export (legacy "YYYY-MM-DD" still accepted on import — only
-// day+month are used); `marketing_consent` accepts 1/0, true/false, yes/no.
+// The first four are the original required columns; the trailing ones are
+// optional (older/shorter CSVs still import). `birthday` is AU day-first "DD/MM"
+// on export (legacy "YYYY-MM-DD" still accepted on import — only day+month are
+// used); `marketing_consent` accepts 1/0, true/false, yes/no; `notes` is
+// staff-only freeform text.
 export const CSV_HEADERS = [
   'phone',
   'name',
@@ -16,6 +17,7 @@ export const CSV_HEADERS = [
   'birthday',
   'marketing_consent',
   'last_visited',
+  'notes',
 ] as const
 
 // Parse CSV text into rows of cells. Returns [] for empty input.

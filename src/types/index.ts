@@ -13,6 +13,7 @@ export interface Customer {
   birthday: string | null // "YYYY-MM-DD" or null
   birthdayRedeemedYear: number | null // year the birthday benefit was last claimed
   marketingConsent: boolean // opted in to marketing SMS
+  notes: string // staff-only freeform notes (allergies, prefs); never shown on kiosk
 }
 
 export interface ServiceGroup {
@@ -155,6 +156,7 @@ export interface CustomerRow {
   birthday: string | null
   birthday_redeemed_year: number | null
   marketing_consent?: boolean
+  notes?: string
   created_at?: string
 }
 

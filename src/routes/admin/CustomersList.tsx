@@ -28,7 +28,7 @@ import {
   SORT_LABELS,
   type SortKey,
 } from './customersListHelpers'
-import { DateChip, TrashIcon } from './customersListParts'
+import { DateChip, NoteCell, TrashIcon } from './customersListParts'
 
 export function CustomersList() {
   const { data: customers, isLoading, error } = useCustomers()
@@ -47,6 +47,16 @@ export function CustomersList() {
   const [page, setPage] = useState(0) // zero-based page index
   // Customer pending deletion (drives the confirmation dialog); null when closed.
   const [toDelete, setToDelete] = useState<Customer | null>(null)
+  // Rows whose note is expanded to full text (tap-to-toggle, for touch devices
+  // where the hover `title` tooltip doesn't work).
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set())
+  const toggleNote = (id: string) =>
+    setExpandedNotes((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
   // A customer is redeem-eligible (from admin) when their balance meets the
   // lowest active points-program threshold (>= N — a customer with exactly N
@@ -159,6 +169,7 @@ export function CustomersList() {
         formatBirthdayCsv(c.birthday),
         c.marketingConsent ? 1 : 0,
         c.lastVisitAt ?? '',
+        c.notes,
       ]),
     ]
     downloadCsv('customers.csv', toCsv(rows))
@@ -420,12 +431,12 @@ export function CustomersList() {
             <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-500 shadow-sm">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
-                <th className="hidden px-4 py-3 font-medium lg:table-cell">Phone</th>
                 <th className="hidden px-4 py-3 font-medium lg:table-cell">DoB</th>
                 <th className="hidden px-4 py-3 font-medium lg:table-cell">Last visited</th>
                 <th className="px-4 py-3 font-medium">Points</th>
                 <th className="hidden px-4 py-3 font-medium lg:table-cell">Lifetime points</th>
                 <th className="px-4 py-3 font-medium">Visits</th>
+                <th className="hidden px-4 py-3 font-medium lg:table-cell">Notes</th>
                 <th className="px-4 py-3 text-right font-medium">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -462,9 +473,12 @@ export function CustomersList() {
                           {tBadge.label}
                         </span>
                       )}
-                      {/* Consolidated (below lg): phone + DoB stacked under the name. */}
-                      <div className="mt-1 space-y-0.5 text-xs text-slate-500 lg:hidden">
-                        <div>{formatPhone(c.phone)}</div>
+                      {/* Phone lives under the name at all widths (freed its own
+                          column so Notes can show at lg+). */}
+                      <div className="mt-1 text-xs text-slate-500">{formatPhone(c.phone)}</div>
+                      {/* Below lg: DoB + notes also stack here (they have their
+                          own columns at lg+). */}
+                      <div className="mt-0.5 space-y-0.5 text-xs text-slate-500 lg:hidden">
                         <div className="flex items-center gap-1">
                           <span>🎂 {formatBirthday(c.birthday)}</span>
                           {badge && (
@@ -475,9 +489,17 @@ export function CustomersList() {
                             </span>
                           )}
                         </div>
+                        {c.notes.trim() !== '' && (
+                          <NoteCell
+                            notes={c.notes}
+                            prefix="📝 "
+                            expanded={expandedNotes.has(c.id)}
+                            onToggle={() => toggleNote(c.id)}
+                            className="text-slate-500"
+                          />
+                        )}
                       </div>
                     </td>
-                    <td className="hidden px-4 py-3 align-top text-slate-600 lg:table-cell">{formatPhone(c.phone)}</td>
                     <td className="hidden px-4 py-3 align-top lg:table-cell">
                       <span className="text-slate-600">{formatBirthday(c.birthday)}</span>
                       {badge && (
@@ -533,6 +555,18 @@ export function CustomersList() {
                           {c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString() : '—'}
                         </div>
                       </div>
+                    </td>
+                    <td className="hidden max-w-[16rem] px-4 py-3 align-top lg:table-cell">
+                      {c.notes.trim() !== '' ? (
+                        <NoteCell
+                          notes={c.notes}
+                          expanded={expandedNotes.has(c.id)}
+                          onToggle={() => toggleNote(c.id)}
+                          className="text-slate-600"
+                        />
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right align-top">
                       <button

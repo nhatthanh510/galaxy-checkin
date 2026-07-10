@@ -78,6 +78,7 @@ export interface UpdateCustomerInput {
   pointsBalance: number
   birthday: string | null
   lifetimePoints: number
+  notes: string
 }
 
 // Admin: update a customer's editable fields via the admin_update_customer RPC,
@@ -93,6 +94,7 @@ export function useUpdateCustomer() {
         p_points_balance: input.pointsBalance,
         p_birthday: input.birthday,
         p_lifetime_points: input.lifetimePoints,
+        p_notes: input.notes,
       })
       if (error) throw error
       return mapCustomer(data as CustomerRow)

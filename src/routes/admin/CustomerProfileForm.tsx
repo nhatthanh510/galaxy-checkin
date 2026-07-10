@@ -20,6 +20,9 @@ import {
   shouldRemindBirthday,
 } from '../../lib/birthday'
 
+// Max staff-note length; mirrors the DB CHECK in migration 0016.
+const NOTES_MAX = 140
+
 // Editable profile form, seeded directly from props (no effect). The parent
 // gates on load and keys this by customer id so it re-initializes per customer.
 export function ProfileForm({ customer }: { customer: Customer }) {
@@ -32,6 +35,7 @@ export function ProfileForm({ customer }: { customer: Customer }) {
   const [points, setPoints] = useState(String(customer.pointsBalance))
   const [lifetimePoints, setLifetimePoints] = useState(String(customer.lifetimePoints))
   const [birthday, setBirthday] = useState(dateStringToParts(customer.birthday))
+  const [notes, setNotes] = useState(customer.notes)
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const [redeemedMsg, setRedeemedMsg] = useState<string | null>(null)
   const [bdayClaimed, setBdayClaimed] = useState(false)
@@ -55,7 +59,8 @@ export function ProfileForm({ customer }: { customer: Customer }) {
     name.trim() !== customer.name ||
     (Number(points) || 0) !== customer.pointsBalance ||
     (Number(lifetimePoints) || 0) !== customer.lifetimePoints ||
-    partsToDateString(birthday) !== customer.birthday
+    partsToDateString(birthday) !== customer.birthday ||
+    notes !== customer.notes
   // Confirmation popover shown before claiming a birthday (guards accidental
   // clicks; a first-visit customer also gets a stronger warning inside).
   const [confirmingBday, setConfirmingBday] = useState(false)
@@ -103,11 +108,13 @@ export function ProfileForm({ customer }: { customer: Customer }) {
       pointsBalance: Number(points) || 0,
       birthday: partsToDateString(birthday),
       lifetimePoints: Number(lifetimePoints) || 0,
+      notes,
     })
     // Reflect the saved values so the section recomputes.
     setBalance(updated.pointsBalance)
     setPoints(String(updated.pointsBalance))
     setLifetimePoints(String(updated.lifetimePoints))
+    setNotes(updated.notes)
     setSavedMsg(`${updated.name}'s profile updated`)
   }
 
@@ -181,6 +188,27 @@ export function ProfileForm({ customer }: { customer: Customer }) {
           <BirthdayDropdowns value={birthday} onChange={setBirthday} variant="light" />
         </div>
       </div>
+      <label className="mt-4 block">
+        <span className="text-sm font-medium text-slate-600">
+          Staff notes <span className="font-normal text-slate-400">(private — never shown to the customer)</span>
+        </span>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value.slice(0, NOTES_MAX))}
+          rows={2}
+          maxLength={NOTES_MAX}
+          placeholder="Allergies, colour preferences, things to remember…"
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+        />
+        <span
+          className={
+            'mt-1 block text-right text-xs ' +
+            (notes.length >= NOTES_MAX ? 'text-amber-600' : 'text-slate-400')
+          }
+        >
+          {notes.length}/{NOTES_MAX}
+        </span>
+      </label>
       <div className="mt-4 flex items-center gap-3">
         <Button onClick={onSave} disabled={update.isPending || !dirty}>
           {update.isPending ? 'Saving…' : 'Save'}

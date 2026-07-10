@@ -71,6 +71,8 @@ export function useCreateCheckin() {
           // carries the known customer's value forward for birthday eligibility.
           birthdayRedeemedYear: null,
           marketingConsent: input.consent,
+          // Notes are staff-only; the kiosk path neither has nor needs them.
+          notes: '',
         },
       }
 
