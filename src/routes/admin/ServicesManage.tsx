@@ -15,6 +15,7 @@ import { TextInput } from '../../components/ui/TextInput'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { TableSkeleton } from '../../components/ui/Skeleton'
+import { Select } from '../../components/ui/Select'
 
 type Mode = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; service: Service }
 
@@ -191,22 +192,22 @@ function ServiceForm({ service, onDone }: { service?: Service; onDone: () => voi
             className="mt-1"
           />
         </label>
-        <label className="block">
+        <div className="block">
           <span className="text-sm font-medium text-slate-600">Group</span>
-          <select
+          <Select
             value={groupId}
-            onChange={(e) => setGroupId(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-          >
-            <option value="">— No group —</option>
-            {(groups ?? []).map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-                {g.active ? '' : ' (inactive)'}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={setGroupId}
+            className="mt-1"
+            aria-label="Service group"
+            options={[
+              { value: '', label: '— No group —' },
+              ...(groups ?? []).map((g) => ({
+                value: g.id,
+                label: g.name + (g.active ? '' : ' (inactive)'),
+              })),
+            ]}
+          />
+        </div>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"

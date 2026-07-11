@@ -38,3 +38,19 @@ export function toDateInputValue(day: Date): string {
   const dd = String(day.getDate()).padStart(2, '0')
   return `${yyyy}-${mm}-${dd}`
 }
+
+// A date + HH:mm for display (local time), e.g. "6/07/2026, 14:15". Returns "—"
+// for null/empty. Used for "last visited" where the time-of-day matters.
+export function formatDateTime(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString(undefined, {
+    day: 'numeric',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}

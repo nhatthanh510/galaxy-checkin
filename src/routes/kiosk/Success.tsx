@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
 import { useCreateCheckin, useRedeemPoints, AlreadyCheckedInTodayError } from '../../lib/queries'
 import { useEligiblePromotions } from '../../lib/useEligiblePromotions'
+import { customerTier, tierBadgeKiosk } from '../../lib/tier'
 import type { Customer } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
 
@@ -184,6 +185,18 @@ export function Success() {
                   <span className="text-3xl font-bold text-white">{name}</span>
                 </div>
               )}
+              {customer && (
+                <div className="mt-3 flex justify-center">
+                  {(() => {
+                    const badge = tierBadgeKiosk(customerTier(customer.lifetimePoints))
+                    return (
+                      <span className={`rounded-full px-4 py-1.5 text-lg font-bold ${badge.className}`}>
+                        {badge.label} member
+                      </span>
+                    )
+                  })()}
+                </div>
+              )}
               {points !== null && (
                 <div className="mt-5 flex items-baseline justify-center gap-2">
                   <span className="text-5xl font-black text-brand-200">{points}</span>
@@ -215,14 +228,23 @@ export function Success() {
                 >
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-lg font-semibold text-white">{promo.title}</p>
-                      {promo.tierLabel && (
-                        <span className="rounded-full bg-amber-400/20 px-2.5 py-0.5 text-sm font-bold text-amber-300 ring-1 ring-amber-300/40">
-                          ⭐ {promo.tierLabel}
+                      <p className="text-base font-semibold text-white">{promo.title}</p>
+                      {promo.tierNote && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            promo.tierNoteClass ?? 'bg-white/10 text-white/60'
+                          }`}
+                        >
+                          {promo.tierNote}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-white/60">{promo.detail}</p>
+                    {promo.highlight && (
+                      <p className="mt-0.5 text-2xl font-black text-brand-300">
+                        {promo.highlight}
+                      </p>
+                    )}
+                    <p className="mt-0.5 text-sm text-white/60">{promo.detail}</p>
                   </div>
                   <button
                     type="button"

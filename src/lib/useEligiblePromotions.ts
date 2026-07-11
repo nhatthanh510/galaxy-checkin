@@ -2,7 +2,7 @@ import type { Customer } from '../types'
 import { useActiveLoyaltyPrograms, useSettings } from './queries'
 import { shouldClaimDateWindow } from './birthday'
 import { formatReward } from './reward'
-import { birthdayPercentForTier, customerTier, tierName } from './tier'
+import { birthdayPercentForTier, customerTier, tierBadgeKiosk, tierName } from './tier'
 
 // One eligible promotion — a redeemable loyalty program. All are redeemed via
 // redeem_points by programId; the trigger decides what changes on the customer.
@@ -14,11 +14,17 @@ export interface Promotion {
   // to apply after a successful redeem.
   stampsYear: boolean
   title: string
+  // The reward value to highlight prominently (e.g. "15% off", "$10 off"). For
+  // birthday rewards this is the tier-based percent, so it draws the eye without
+  // restating the tier. Optional — falls back to plain `detail` when absent.
+  highlight?: string
   detail: string
   actionLabel: string
-  // Optional highlighted badge on the reward card (e.g. the birthday tier so the
-  // customer/staff see "VIP" prominently). Omitted for non-tiered rewards.
-  tierLabel?: string
+  // A small tier cue (e.g. "New" / "Regular" / "VIP") for tier-based rewards, so
+  // the customer knows the discount reflects their standing. `tierNoteClass` is
+  // the tier's kiosk colour so it matches the tier badge on the customer card.
+  tierNote?: string
+  tierNoteClass?: string
 }
 
 // Compute every promo a customer is eligible for right now. All are redeemed via
@@ -68,18 +74,20 @@ export function useEligiblePromotions(customer: Customer | null): Promotion[] {
         )
       if (eligible) {
         // Birthday discount is tier-based (New/Regular/VIP), not the program's
-        // fixed reward_value — so the kiosk shows the exact % this customer gets,
-        // with the tier named so staff know why it's that amount.
+        // fixed reward_value — so the kiosk shows the exact % this customer gets.
+        // The tier itself is shown on the customer card, not repeated here.
         const pct = birthdayPercentForTier(customer.lifetimePoints, tierPercents)
-        const tier = tierName(customerTier(customer.lifetimePoints))
+        const tier = customerTier(customer.lifetimePoints)
         promotions.push({
           id: `program-${p.id}`,
           programId: p.id,
           stampsYear: true,
           title: `🎂 ${p.name}`,
-          detail: `${pct}% off — Happy birthday!`,
+          highlight: `${pct}% off`,
+          detail: 'Happy birthday! 🎉',
+          tierNote: tierName(tier),
+          tierNoteClass: tierBadgeKiosk(tier).className,
           actionLabel: 'Claim',
-          tierLabel: `${tier} tier`,
         })
       }
     } else if (p.triggerType === 'always') {
@@ -88,7 +96,8 @@ export function useEligiblePromotions(customer: Customer | null): Promotion[] {
         programId: p.id,
         stampsYear: true, // once-per-year guard also applies to standing promos
         title: p.name,
-        detail: reward,
+        highlight: reward,
+        detail: 'Standing offer',
         actionLabel: 'Claim',
       })
     } else if (p.pointsPerReward > 0 && customer.pointsBalance >= p.pointsPerReward) {
@@ -97,7 +106,8 @@ export function useEligiblePromotions(customer: Customer | null): Promotion[] {
         programId: p.id,
         stampsYear: false,
         title: p.name,
-        detail: `Redeem ${p.pointsPerReward} points for ${reward}`,
+        highlight: reward,
+        detail: `Redeem ${p.pointsPerReward} points`,
         actionLabel: 'Redeem',
       })
     }

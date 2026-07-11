@@ -8,7 +8,7 @@ import {
   useCheckinCustomerIdsOnDate,
 } from '../../lib/queries'
 import { CSV_HEADERS, downloadCsv, toCsv } from '../../lib/csv'
-import { localDateFromInput, toDateInputValue } from '../../lib/day'
+import { formatDateTime, localDateFromInput, toDateInputValue } from '../../lib/day'
 import { formatPhone } from '../../lib/phone'
 import {
   birthdayStatus,
@@ -16,9 +16,10 @@ import {
   formatBirthday,
   formatBirthdayCsv,
 } from '../../lib/birthday'
-import { customerTier, tierBadge } from '../../lib/tier'
+import { birthdayPercentForTier, customerTier, tierBadge } from '../../lib/tier'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { Button } from '../../components/ui/Button'
+import { Select } from '../../components/ui/Select'
 import { TextInput } from '../../components/ui/TextInput'
 import { TableSkeleton } from '../../components/ui/Skeleton'
 import type { Customer } from '../../types'
@@ -120,8 +121,6 @@ export function CustomersList() {
         return list.sort((a, b) => b.pointsBalance - a.pointsBalance || byName(a, b))
       case 'lifetime':
         return list.sort((a, b) => b.lifetimePoints - a.lifetimePoints || byName(a, b))
-      case 'visits':
-        return list.sort((a, b) => b.visitCount - a.visitCount || byName(a, b))
       case 'lastVisit':
       default:
         return list.sort((a, b) => {
@@ -246,7 +245,7 @@ export function CustomersList() {
     },
     birthdayOnly && {
       key: 'birthday',
-      label: '🎂 Birthday soon',
+      label: '🎂 Birthday nearby',
       clear: () => {
         setBirthdayOnly(false)
         setPage(0)
@@ -321,7 +320,7 @@ export function CustomersList() {
             }}
             className="h-4 w-4 accent-pink-600"
           />
-          🎂 Birthday soon
+          🎂 Birthday nearby
           <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs font-medium text-pink-700">
             {birthdayCount}
           </span>
@@ -362,23 +361,22 @@ export function CustomersList() {
           )}
         </div>
 
-        <label className="ml-auto flex items-center gap-2 text-sm text-slate-600">
-          Sort by
-          <select
+        <div className="ml-auto flex items-center gap-2 text-sm text-slate-600">
+          <span className="shrink-0">Sort by</span>
+          <Select
             value={sortBy}
-            onChange={(e) => {
-              setSortBy(e.target.value as SortKey)
+            aria-label="Sort customers by"
+            options={(Object.keys(SORT_LABELS) as SortKey[]).map((k) => ({
+              value: k,
+              label: SORT_LABELS[k],
+            }))}
+            onChange={(k) => {
+              setSortBy(k)
               setPage(0)
             }}
-            className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-          >
-            {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
-              <option key={k} value={k}>
-                {SORT_LABELS[k]}
-              </option>
-            ))}
-          </select>
-        </label>
+            className="w-40"
+          />
+        </div>
       </div>
 
       {/* Active-filter chips — one removable pill per active filter, so it's
@@ -435,7 +433,6 @@ export function CustomersList() {
                 <th className="hidden px-4 py-3 font-medium lg:table-cell">Last visited</th>
                 <th className="px-4 py-3 font-medium">Points</th>
                 <th className="hidden px-4 py-3 font-medium lg:table-cell">Lifetime points</th>
-                <th className="px-4 py-3 font-medium">Visits</th>
                 <th className="hidden px-4 py-3 font-medium lg:table-cell">Notes</th>
                 <th className="px-4 py-3 text-right font-medium">
                   <span className="sr-only">Actions</span>
@@ -447,20 +444,42 @@ export function CustomersList() {
                 const eligible = isEligible(c.pointsBalance)
                 const bday = bdayStatus(c.birthday, c.birthdayRedeemedYear)
                 const badge = birthdayStatusBadge(bday)
-                // Highlight the row while an unclaimed birthday is in-window.
-                const bdayActive = bday !== 'none' && bday !== 'claimed'
+                const bdayInWindow = bday === 'today' || bday === 'upcoming' || bday === 'recent'
+                // Keep rows calm (mostly white) — status is a coloured LEFT ACCENT
+                // bar, not a full-row wash. The one exception is a birthday TODAY,
+                // which gets a light pink fill since it's genuinely act-now. Accent
+                // colour matches the badge urgency (today→pink, soon→amber,
+                // recent→blue; redeem-eligible→emerald).
+                // Every row carries a 4px left border (transparent by default) so
+                // accented and plain rows stay horizontally aligned — no content
+                // shift between them.
+                const rowAccent =
+                  'border-l-4 ' +
+                  (bday === 'today'
+                    ? 'border-pink-500 bg-pink-50 hover:bg-pink-100'
+                    : bday === 'upcoming'
+                      ? 'border-amber-400 hover:bg-slate-50'
+                      : bday === 'recent'
+                        ? 'border-sky-400 hover:bg-slate-50'
+                        : eligible
+                          ? 'border-emerald-400 hover:bg-slate-50'
+                          : 'border-transparent hover:bg-slate-50')
                 const tBadge = tierBadge(customerTier(c.lifetimePoints))
+                // The birthday discount this customer would get (tier-based),
+                // shown beside the badge so staff see it at a glance. Only
+                // meaningful while an unclaimed birthday is in-window.
+                const bdayPct =
+                  bdayInWindow && settings
+                    ? birthdayPercentForTier(c.lifetimePoints, {
+                        new: settings.birthdayPercentNew,
+                        regular: settings.birthdayPercentRegular,
+                        vip: settings.birthdayPercentVip,
+                      })
+                    : null
                 return (
                   <tr
                     key={c.id}
-                    className={
-                      'border-b border-slate-100 last:border-0 ' +
-                      (bdayActive
-                        ? 'bg-pink-50 hover:bg-pink-100'
-                        : eligible
-                          ? 'bg-emerald-50 hover:bg-emerald-100'
-                          : 'hover:bg-slate-50')
-                    }
+                    className={'border-b border-slate-100 last:border-0 ' + rowAccent}
                   >
                     <td className="px-4 py-3 align-top">
                       <Link to={`/admin/customers/${c.id}`} className="font-medium text-brand-700 hover:underline">
@@ -479,7 +498,7 @@ export function CustomersList() {
                       {/* Below lg: DoB + notes also stack here (they have their
                           own columns at lg+). */}
                       <div className="mt-0.5 space-y-0.5 text-xs text-slate-500 lg:hidden">
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap items-center gap-1">
                           <span>🎂 {formatBirthday(c.birthday)}</span>
                           {badge && (
                             <span
@@ -488,6 +507,14 @@ export function CustomersList() {
                               {badge.label}
                             </span>
                           )}
+                          {bdayPct != null && (
+                            <span className="rounded-full bg-pink-100 px-1.5 py-0.5 text-[10px] font-semibold text-pink-700">
+                              {bdayPct}% off
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-slate-500">
+                          🕐 {formatDateTime(c.lastVisitAt)}
                         </div>
                         {c.notes.trim() !== '' && (
                           <NoteCell
@@ -501,39 +528,50 @@ export function CustomersList() {
                       </div>
                     </td>
                     <td className="hidden px-4 py-3 align-top lg:table-cell">
-                      <span className="text-slate-600">{formatBirthday(c.birthday)}</span>
-                      {badge && (
-                        <span
-                          className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
-                        >
-                          {badge.label}
+                      {/* Date + badges on one line; whole chips (whitespace-nowrap)
+                          wrap together only if the column gets tight. */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="whitespace-nowrap text-slate-600">
+                          {formatBirthday(c.birthday)}
                         </span>
-                      )}
+                        {badge && (
+                          <span
+                            className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        )}
+                        {bdayPct != null && (
+                          <span className="whitespace-nowrap rounded-full bg-pink-100 px-2 py-0.5 text-xs font-semibold text-pink-700">
+                            {bdayPct}% off
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="hidden px-4 py-3 align-top text-slate-600 lg:table-cell">
-                      {c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString() : '—'}
+                    <td className="hidden px-4 py-3 align-top text-slate-600 lg:table-cell whitespace-nowrap">
+                      {formatDateTime(c.lastVisitAt)}
                     </td>
                     <td className="px-4 py-3 align-top">
-                      {/* Desktop (lg+): just the current balance (Lifetime is its own column). */}
-                      <span className="hidden text-slate-600 lg:inline">{c.pointsBalance}</span>
-                      {eligible && (
-                        <span className="ml-2 hidden rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 lg:inline-block">
-                          🎁 Redeemable
-                        </span>
-                      )}
+                      {/* Desktop (lg+): balance + Redeemable chip on one line. */}
+                      <div className="hidden items-center gap-2 lg:flex">
+                        <span className="text-slate-600">{c.pointsBalance}</span>
+                        {eligible && (
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                            🎁 Redeemable
+                          </span>
+                        )}
+                      </div>
                       {/* Consolidated (below lg): current + lifetime, each labelled. */}
                       <div className="space-y-0.5 text-xs lg:hidden">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-600">
-                            <span className="text-slate-400">Current </span>
-                            {c.pointsBalance}
-                          </span>
-                          {eligible && (
-                            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                              🎁
-                            </span>
-                          )}
+                        <div>
+                          <span className="text-slate-400">Current </span>
+                          <span className="text-slate-600">{c.pointsBalance}</span>
                         </div>
+                        {eligible && (
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                            🎁 Redeemable
+                          </span>
+                        )}
                         <div className="text-slate-600">
                           <span className="text-slate-400">Lifetime </span>
                           {c.lifetimePoints}
@@ -541,21 +579,6 @@ export function CustomersList() {
                       </div>
                     </td>
                     <td className="hidden px-4 py-3 align-top text-slate-600 lg:table-cell">{c.lifetimePoints}</td>
-                    <td className="px-4 py-3 align-top text-slate-600">
-                      {/* Desktop: just the visit count (Last visited is its own column at lg+). */}
-                      <span className="hidden lg:inline">{c.visitCount}</span>
-                      {/* Mobile/tablet: count + last visited, each labelled. */}
-                      <div className="space-y-0.5 text-xs lg:hidden">
-                        <div>
-                          <span className="text-slate-400">Count </span>
-                          {c.visitCount}
-                        </div>
-                        <div>
-                          <span className="text-slate-400">Last visited </span>
-                          {c.lastVisitAt ? new Date(c.lastVisitAt).toLocaleDateString() : '—'}
-                        </div>
-                      </div>
-                    </td>
                     <td className="hidden max-w-[16rem] px-4 py-3 align-top lg:table-cell">
                       {c.notes.trim() !== '' ? (
                         <NoteCell
@@ -583,7 +606,7 @@ export function CustomersList() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                     No customers found.
                   </td>
                 </tr>

@@ -147,13 +147,18 @@ export function birthdayStatus(
 export function birthdayStatusBadge(
   status: BirthdayStatus,
 ): { label: string; className: string } | null {
+  // Distinct colours by urgency so the three states are told apart at a glance:
+  //   today    — solid pink (it's happening now — act today)
+  //   upcoming — amber (heads-up, coming up)
+  //   recent   — blue (just passed, still claimable)
+  //   claimed  — muted grey (done)
   switch (status) {
     case 'today':
-      return { label: '🎂 Birthday today', className: 'bg-pink-100 text-pink-700' }
+      return { label: '🎂 Birthday today', className: 'bg-pink-600 text-white' }
     case 'upcoming':
-      return { label: '🎂 Birthday soon', className: 'bg-pink-100 text-pink-700' }
+      return { label: '🎂 Birthday soon', className: 'bg-amber-100 text-amber-800' }
     case 'recent':
-      return { label: '🎂 Recent birthday', className: 'bg-pink-100 text-pink-700' }
+      return { label: '🎂 Recent birthday', className: 'bg-sky-100 text-sky-700' }
     case 'claimed':
       return { label: '✓ Claimed', className: 'bg-slate-100 text-slate-500' }
     default:

@@ -14,6 +14,7 @@ import { useConfirm } from '../../components/useConfirm'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { TableSkeleton } from '../../components/ui/Skeleton'
+import { Select } from '../../components/ui/Select'
 
 // Admin: compose and send a marketing SMS campaign. Recipients are restricted to
 // customers who opted in (marketing_consent), per SMS marketing law.
@@ -100,21 +101,19 @@ export function Marketing() {
         <>
           {/* Template picker + preview */}
           <Card className="mt-6">
-            <label className="block">
+            <div className="block">
               <span className="text-sm font-medium text-slate-600">Template</span>
-              <select
+              <Select
                 value={templateId}
-                onChange={(e) => setTemplateId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-              >
-                <option value="">Select a template…</option>
-                {marketingTemplates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={setTemplateId}
+                className="mt-1"
+                aria-label="Marketing template"
+                options={[
+                  { value: '', label: 'Select a template…' },
+                  ...marketingTemplates.map((t) => ({ value: t.id, label: t.name })),
+                ]}
+              />
+            </div>
             {template && <Preview template={template} sample={consented[0]} reward={reward} />}
           </Card>
 

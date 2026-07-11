@@ -5,6 +5,7 @@ import { KioskLayout } from '../../components/KioskLayout'
 import { ServiceRow } from '../../components/ServiceRow'
 import { BackButton } from '../../components/BackButton'
 import { useServices, useServiceGroups } from '../../lib/queries'
+import { customerTier, tierBadgeKiosk } from '../../lib/tier'
 import type { Service, ServiceGroup } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
 
@@ -35,9 +36,21 @@ export function ServiceSelection() {
       <div className="mx-auto flex h-full w-full max-w-6xl flex-col">
         {customer && (
           <div className="mb-6">
-            <p className="text-2xl font-semibold text-white">
-              Welcome back, {customer.name}! 👋
-            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-2xl font-semibold text-white">
+                Welcome back, {customer.name}! 👋
+              </p>
+              {(() => {
+                const badge = tierBadgeKiosk(customerTier(customer.lifetimePoints))
+                return (
+                  <span
+                    className={`rounded-full px-4 py-1.5 text-lg font-bold ${badge.className}`}
+                  >
+                    {badge.label}
+                  </span>
+                )
+              })()}
+            </div>
             <p className="mt-1 text-lg text-white/70">
               You have{' '}
               <span className="font-bold text-brand-300">{customer.pointsBalance}</span>{' '}

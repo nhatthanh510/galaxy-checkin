@@ -4,12 +4,11 @@
 
 // Sort options exposed in the dropdown; all order high→low (most recent first
 // for last-visited). Name is the tiebreaker so paging stays deterministic.
-export type SortKey = 'lastVisit' | 'points' | 'lifetime' | 'visits'
+export type SortKey = 'lastVisit' | 'points' | 'lifetime'
 export const SORT_LABELS: Record<SortKey, string> = {
   lastVisit: 'Last visited',
   points: 'Points balance',
   lifetime: 'Lifetime points',
-  visits: 'Visit count',
 }
 
 // Sentinel for a gap in the page list.

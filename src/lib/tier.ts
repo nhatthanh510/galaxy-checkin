@@ -28,6 +28,25 @@ export function tierBadge(tier: CustomerTier): { label: string; className: strin
   }
 }
 
+// A bold tier badge for the DARK kiosk theme — bright, celebratory, so the
+// customer sees their tier at a glance on the greeting screen.
+export function tierBadgeKiosk(tier: CustomerTier): { label: string; className: string } {
+  switch (tier) {
+    case 'vip':
+      return { label: '⭐ VIP', className: 'bg-amber-400/20 text-amber-300 ring-1 ring-amber-300/40' }
+    case 'regular':
+      return {
+        label: '💎 Regular',
+        className: 'bg-sky-400/20 text-sky-300 ring-1 ring-sky-300/40',
+      }
+    case 'new':
+      return {
+        label: '✨ New',
+        className: 'bg-emerald-400/20 text-emerald-300 ring-1 ring-emerald-300/40',
+      }
+  }
+}
+
 // The birthday discount percent for each tier, as configured in app_settings.
 // New/Regular/VIP each get their own percent (defaults 10/15/20). Used by the
 // kiosk rewards UI and the send-birthday-sms edge function so the number a

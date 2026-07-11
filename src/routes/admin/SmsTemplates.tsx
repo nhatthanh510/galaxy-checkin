@@ -13,6 +13,7 @@ import { TextInput } from '../../components/ui/TextInput'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { TableSkeleton } from '../../components/ui/Skeleton'
+import { Select } from '../../components/ui/Select'
 
 type Mode =
   | { kind: 'list' }
@@ -173,17 +174,18 @@ function TemplateForm({ template, onDone }: { template?: SmsTemplate; onDone: ()
           />
         </label>
 
-        <label className="block">
+        <div className="block">
           <span className="text-sm font-medium text-slate-600">Type</span>
-          <select
+          <Select<NotificationKind>
             value={kind}
-            onChange={(e) => setKind(e.target.value as NotificationKind)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-          >
-            <option value="marketing">Marketing (used in campaigns)</option>
-            <option value="birthday">🎂 Birthday (used by the daily auto-send)</option>
-          </select>
-        </label>
+            onChange={setKind}
+            className="mt-1"
+            options={[
+              { value: 'marketing', label: 'Marketing (used in campaigns)' },
+              { value: 'birthday', label: '🎂 Birthday (used by the daily auto-send)' },
+            ]}
+          />
+        </div>
 
         <label className="block">
           <span className="text-sm font-medium text-slate-600">Message</span>

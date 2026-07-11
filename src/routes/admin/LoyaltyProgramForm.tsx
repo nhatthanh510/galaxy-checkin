@@ -10,6 +10,7 @@ import { birthdayTierSummary } from '../../lib/tier'
 import { TextInput } from '../../components/ui/TextInput'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { Select } from '../../components/ui/Select'
 
 // Create/edit form. Seeded from `program` on edit (via key remount in the list).
 export function ProgramForm({
@@ -112,24 +113,25 @@ export function ProgramForm({
           </label>
         )}
         {/* Trigger: how the reward becomes claimable. */}
-        <label className="block">
+        <div className="block">
           <span className="text-sm font-medium text-slate-600">How is it earned?</span>
-          <select
+          <Select<PromotionTrigger>
             value={triggerType}
-            onChange={(e) => setTriggerType(e.target.value as PromotionTrigger)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-          >
-            <option value="points">Points — redeem when the customer has enough points</option>
-            <option value="date_window">🎂 Birthday — claimed around the customer's birthday</option>
-            <option value="always">Standing promo — claimable on any visit</option>
-          </select>
+            onChange={setTriggerType}
+            className="mt-1"
+            options={[
+              { value: 'points', label: 'Points — redeem when the customer has enough points' },
+              { value: 'date_window', label: "🎂 Birthday — claimed around the customer's birthday" },
+              { value: 'always', label: 'Standing promo — claimable on any visit' },
+            ]}
+          />
           <span className="mt-1 block text-xs text-slate-400">
             {triggerType === 'points' && 'The customer spends points to redeem this reward.'}
             {triggerType === 'date_window' &&
               'No points needed — claimable once per year inside the birthday window below.'}
             {triggerType === 'always' && 'No points needed — claimable once per year on any visit.'}
           </span>
-        </label>
+        </div>
 
         {/* Points threshold — only for the points trigger. */}
         {triggerType === 'points' && (
@@ -180,17 +182,18 @@ export function ProgramForm({
           </div>
         ) : (
           <>
-            <label className="block">
+            <div className="block">
               <span className="text-sm font-medium text-slate-600">Reward type</span>
-              <select
+              <Select<RewardType>
                 value={rewardType}
-                onChange={(e) => setRewardType(e.target.value as RewardType)}
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-              >
-                <option value="fixed">Fixed amount ($)</option>
-                <option value="percent">Percentage (%)</option>
-              </select>
-            </label>
+                onChange={setRewardType}
+                className="mt-1"
+                options={[
+                  { value: 'fixed', label: 'Fixed amount ($)' },
+                  { value: 'percent', label: 'Percentage (%)' },
+                ]}
+              />
+            </div>
             <label className="block">
               <span className="text-sm font-medium text-slate-600">
                 {rewardType === 'percent' ? 'Reward percentage (%)' : 'Reward amount ($)'}

@@ -1,4 +1,5 @@
 import { dayOptions, monthOptions, type BirthdayParts } from '../lib/birthday'
+import { Select } from './ui/Select'
 
 interface BirthdayDropdownsProps {
   value: BirthdayParts
@@ -9,45 +10,28 @@ interface BirthdayDropdownsProps {
 
 // Two dropdowns (Day / Month) for entering a birthday — day + month only, no
 // year. All-or-nothing: partsToDateString returns null unless both are set.
-export function BirthdayDropdowns({
-  value,
-  onChange,
-  variant = 'dark',
-}: BirthdayDropdownsProps) {
-  const selectClass =
-    variant === 'dark'
-      ? 'rounded-xl bg-black/40 px-4 py-4 text-xl text-white outline-none ring-2 ring-transparent focus:ring-brand-500'
-      : 'rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
-
+// Uses the styled Select so the open menu matches the theme (dark on the kiosk).
+export function BirthdayDropdowns({ value, onChange, variant = 'dark' }: BirthdayDropdownsProps) {
   const num = (s: string): number | null => (s === '' ? null : Number(s))
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <select
-        value={value.day ?? ''}
-        onChange={(e) => onChange({ ...value, day: num(e.target.value) })}
-        className={selectClass}
-      >
-        <option value="">Day</option>
-        {dayOptions().map((d) => (
-          <option key={d} value={d}>
-            {d}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={value.month ?? ''}
-        onChange={(e) => onChange({ ...value, month: num(e.target.value) })}
-        className={selectClass}
-      >
-        <option value="">Month</option>
-        {monthOptions().map((m) => (
-          <option key={m.value} value={m.value}>
-            {m.label}
-          </option>
-        ))}
-      </select>
+      <Select
+        variant={variant}
+        placeholder="Day"
+        aria-label="Birthday day"
+        value={value.day == null ? '' : String(value.day)}
+        onChange={(s) => onChange({ ...value, day: num(s) })}
+        options={dayOptions().map((d) => ({ value: String(d), label: String(d) }))}
+      />
+      <Select
+        variant={variant}
+        placeholder="Month"
+        aria-label="Birthday month"
+        value={value.month == null ? '' : String(value.month)}
+        onChange={(s) => onChange({ ...value, month: num(s) })}
+        options={monthOptions().map((m) => ({ value: String(m.value), label: m.label }))}
+      />
     </div>
   )
 }
