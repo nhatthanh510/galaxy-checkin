@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
 import { ServiceRow } from '../../components/ServiceRow'
+import { ServiceListSkeleton } from '../../components/ServiceListSkeleton'
 import { BackButton } from '../../components/BackButton'
 import { useServices, useServiceGroups } from '../../lib/queries'
 import { customerTier, tierBadgeKiosk } from '../../lib/tier'
@@ -66,7 +67,7 @@ export function ServiceSelection() {
           </h1>
         </div>
 
-        {isLoading && <p className="mt-8 text-white/50">Loading services…</p>}
+        {isLoading && <ServiceListSkeleton />}
         {noServices && (
           <p className="mt-8 text-white/50">
             No services to choose right now — tap NEXT to continue.
@@ -76,23 +77,25 @@ export function ServiceSelection() {
         {/* Scrollable service list — only this region scrolls, so the title and
             SKIP/NEXT stay put on the long menu. Horizontal padding gives the
             selected chips' ring room so it isn't clipped by overflow. */}
-        <div className="mt-6 min-h-0 flex-1 space-y-8 overflow-y-auto px-1 py-1">
-          {grouped.map(({ groupName, items }) => (
-            <div key={groupName}>
-              <h2 className="mb-3 text-xl font-bold text-brand-300">{groupName}</h2>
-              <div className="flex flex-wrap gap-3">
-                {items.map((svc) => (
-                  <ServiceRow
-                    key={svc.id}
-                    service={svc}
-                    checked={flow.selectedServiceIds.includes(svc.id)}
-                    onToggle={() => flow.toggleService(svc.id)}
-                  />
-                ))}
+        {!isLoading && (
+          <div className="scrollbar-slim mt-6 min-h-0 flex-1 space-y-8 overflow-y-auto px-1 py-1">
+            {grouped.map(({ groupName, items }) => (
+              <div key={groupName}>
+                <h2 className="mb-3 text-xl font-bold text-brand-300">{groupName}</h2>
+                <div className="flex flex-wrap gap-3">
+                  {items.map((svc) => (
+                    <ServiceRow
+                      key={svc.id}
+                      service={svc}
+                      checked={flow.selectedServiceIds.includes(svc.id)}
+                      onToggle={() => flow.toggleService(svc.id)}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* SKIP continues with no service; NEXT requires at least one selected. */}
         <div className="mt-6 flex gap-4">
