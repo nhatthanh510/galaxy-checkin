@@ -26,8 +26,10 @@ function NativeSelect({
   onChange: (v: string) => void
   children: ReactNode
 }) {
+  // NOTE: no `[color-scheme:dark]` here — combined with appearance-none it makes
+  // iOS Safari repaint (flash) when the native picker opens.
   const selectClass = dark
-    ? 'w-full appearance-none rounded-xl bg-black/40 px-4 py-4 pr-12 text-xl text-white outline-none ring-2 ring-transparent focus:ring-brand-500 [color-scheme:dark]'
+    ? 'w-full appearance-none rounded-xl bg-black/40 px-4 py-4 pr-12 text-xl text-white outline-none ring-2 ring-transparent focus:ring-brand-500'
     : 'w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-1.5 pr-9 text-sm text-slate-700 outline-none hover:bg-slate-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-200'
 
   return (
@@ -37,6 +39,8 @@ function NativeSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={selectClass}
+        // Prevent the iOS tap-highlight flash when the native picker opens.
+        style={{ WebkitTapHighlightColor: 'transparent' }}
       >
         {children}
       </select>
@@ -70,13 +74,9 @@ function NativeSelect({
 export function BirthdayDropdowns({ value, onChange, variant = 'dark' }: BirthdayDropdownsProps) {
   const dark = variant === 'dark'
   const num = (s: string): number | null => (s === '' ? null : Number(s))
-  // Theme the option rows where browsers honour it: a dark bg + light text on
-  // the kiosk so the native popup isn't a bright white list, and a brand-tinted
-  // hover/checked accent. (Hover colour itself is browser-controlled — accentClass
-  // nudges Chromium/Firefox toward the brand colour.)
-  const optionClass = dark
-    ? 'bg-[#1a1a24] text-white checked:bg-brand-600 hover:bg-brand-600/40'
-    : 'bg-white text-slate-700 checked:bg-brand-50 hover:bg-brand-50'
+  // NOTE: <option>s are intentionally NOT styled. iOS Safari can't theme native
+  // option rows and repaints (flashes) when reconciling custom option colours as
+  // the picker opens — the native picker renders its own list regardless.
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -86,11 +86,9 @@ export function BirthdayDropdowns({ value, onChange, variant = 'dark' }: Birthda
         value={value.day == null ? '' : String(value.day)}
         onChange={(s) => onChange({ ...value, day: num(s) })}
       >
-        <option value="" className={optionClass}>
-          Day
-        </option>
+        <option value="">Day</option>
         {dayOptions().map((d) => (
-          <option key={d} value={d} className={optionClass}>
+          <option key={d} value={d}>
             {d}
           </option>
         ))}
@@ -101,11 +99,9 @@ export function BirthdayDropdowns({ value, onChange, variant = 'dark' }: Birthda
         value={value.month == null ? '' : String(value.month)}
         onChange={(s) => onChange({ ...value, month: num(s) })}
       >
-        <option value="" className={optionClass}>
-          Month
-        </option>
+        <option value="">Month</option>
         {monthOptions().map((m) => (
-          <option key={m.value} value={m.value} className={optionClass}>
+          <option key={m.value} value={m.value}>
             {m.label}
           </option>
         ))}
