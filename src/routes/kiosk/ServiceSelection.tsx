@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
@@ -9,6 +9,7 @@ import { useServices, useServiceGroups } from '../../lib/queries'
 import { customerTier, tierBadgeKiosk } from '../../lib/tier'
 import type { Service, ServiceGroup } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
+import { useConfirmUnload } from './useConfirmUnload'
 
 // Step 3: service selection (optional — SKIP or NEXT). For a known customer this
 // is the first screen after phone entry, so we greet them. Rewards are offered
@@ -27,6 +28,16 @@ export function ServiceSelection() {
 
   const customer = flow.customer
   const noServices = !isLoading && (services ?? []).length === 0
+
+  // Kiosk guard: this step is only valid mid-flow. On a refresh or a direct/deep
+  // link the in-memory flow is empty (no phone), so send them back to the start —
+  // a shared tablet must not resume a stale half-entered flow.
+  useEffect(() => {
+    if (!flow.phone) navigate('/', { replace: true })
+  }, [flow.phone, navigate])
+
+  // Warn before a refresh/close would discard the in-progress flow.
+  useConfirmUnload(Boolean(flow.phone))
 
   // Check-in happens on the success screen; rewards are offered there, against
   // the post-check-in balance.

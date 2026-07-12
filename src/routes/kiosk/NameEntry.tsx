@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
 import { KioskLayout } from '../../components/KioskLayout'
@@ -10,6 +10,7 @@ import {
   type BirthdayParts,
 } from '../../lib/birthday'
 import { useKioskFlow } from './useKioskFlow'
+import { useConfirmUnload } from './useConfirmUnload'
 
 // Step 2 (new customers only): capture the full name + (optional) birthday.
 export function NameEntry() {
@@ -21,6 +22,15 @@ export function NameEntry() {
   const [birthdayParts, setBirthdayParts] = useState<BirthdayParts>(() =>
     dateStringToParts(flow.birthday),
   )
+
+  // Kiosk guard: only reachable mid-flow. On refresh/deep-link the flow is empty
+  // (no phone), so return to the start rather than resume a stale flow.
+  useEffect(() => {
+    if (!flow.phone) navigate('/', { replace: true })
+  }, [flow.phone, navigate])
+
+  // Warn before a refresh/close would discard the in-progress flow.
+  useConfirmUnload(Boolean(flow.phone))
 
   const onBirthdayChange = (parts: BirthdayParts) => {
     setBirthdayParts(parts)

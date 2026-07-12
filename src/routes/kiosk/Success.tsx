@@ -6,6 +6,7 @@ import { useEligiblePromotions } from '../../lib/useEligiblePromotions'
 import { customerTier, tierBadgeKiosk } from '../../lib/tier'
 import type { Customer } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
+import { useConfirmUnload } from './useConfirmUnload'
 
 // Auto-return delay once there's nothing left to decide (no rewards, or the
 // reward was already taken). While a reward decision is still pending the timer
@@ -35,6 +36,11 @@ export function Success() {
 
   const name = customer?.name ?? flow.customer?.name ?? flow.name ?? null
   const points = customer?.pointsBalance ?? null
+
+  // Warn before a refresh/close while the check-in is still being created — a
+  // reload here would abandon it mid-request (the flow resets to the start and
+  // never retries). Once it's resolved, a refresh is harmless.
+  useConfirmUnload(status === 'submitting')
 
   // Rewards the customer can act on right now, from the post-check-in balance.
   const promotions = useEligiblePromotions(customer)
