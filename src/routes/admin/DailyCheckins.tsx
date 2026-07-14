@@ -122,20 +122,22 @@ export function DailyCheckins() {
 
   return (
     <div className="flex h-full min-w-0 flex-col">
-      <div className="mb-5">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold">Check-in activity</h1>
         <p className="mt-1 text-sm text-slate-500">
           Every check-in — who checked in, when, and at which branch.
         </p>
       </div>
 
-      {/* Stat tiles: total + per-branch + unassigned. ALWAYS rendered with the
-          same tile set (Unassigned included even at 0) and a fixed tile height, so
-          neither loading nor a changing count shifts the layout below. During load
-          the values show a skeleton bar instead of numbers. */}
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {/* Stat strip: total + per-branch + unassigned as compact one-line pills, so
+          the metrics take a single short band and don't crowd out the table. On
+          mobile it's ONE horizontally-scrollable row (no wrap) to save vertical
+          space; from sm it wraps normally. Always rendered with the same set
+          (Unassigned included even at 0); values show a skeleton while loading. */}
+      <div className="mb-4 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
         <StatTile
-          label="Total check-ins"
+          label="Total"
+          fullLabel="Total check-ins"
           value={rows?.length ?? 0}
           accent="brand"
           loading={isLoading}
@@ -152,69 +154,70 @@ export function DailyCheckins() {
         <StatTile label="Unassigned" value={counts.unassigned} accent="slate" loading={isLoading} />
       </div>
 
-      {/* Row 1: search + branch. Stacks on narrow widths. */}
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+      {/* Controls. On xl+ everything sits on one line (search grows, date presets,
+          branch pinned right); below xl it wraps so the date presets keep their
+          full width (avoids the segmented control squeezing on iPad-width). */}
+      <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center">
         <TextInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name or phone…"
-          className="w-full sm:max-w-xs"
+          className="w-full xl:max-w-xs"
         />
+        {/* Date presets + (Custom) pickers. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex overflow-hidden whitespace-nowrap rounded-lg border border-slate-300">
+            <DateChip active={mode === 'today'} onClick={() => setMode('today')}>
+              Today
+            </DateChip>
+            <DateChip active={mode === 'yesterday'} onClick={() => setMode('yesterday')} bordered>
+              Yesterday
+            </DateChip>
+            <DateChip active={mode === '7d'} onClick={() => setMode('7d')} bordered>
+              7 days
+            </DateChip>
+            <DateChip active={mode === 'all'} onClick={() => setMode('all')} bordered>
+              All
+            </DateChip>
+            <DateChip active={mode === 'custom'} onClick={() => setMode('custom')} bordered>
+              Custom
+            </DateChip>
+          </div>
+          {/* From/to pickers appear only in Custom mode. */}
+          {mode === 'custom' && (
+            <div className="flex w-full items-center gap-1.5 text-sm text-slate-500 sm:w-auto">
+              <input
+                type="date"
+                value={toDateInputValue(customFrom)}
+                max={toDateInputValue(customTo)}
+                onChange={(e) => {
+                  const d = localDateFromInput(e.target.value)
+                  if (d) setCustomFrom(d)
+                }}
+                className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 sm:flex-none"
+              />
+              <span>–</span>
+              <input
+                type="date"
+                value={toDateInputValue(customTo)}
+                min={toDateInputValue(customFrom)}
+                onChange={(e) => {
+                  const d = localDateFromInput(e.target.value)
+                  if (d) setCustomTo(d)
+                }}
+                className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 sm:flex-none"
+              />
+            </div>
+          )}
+        </div>
+        {/* Branch filter — pinned right on xl. */}
         <Select
           value={branchFilter}
           aria-label="Filter by branch"
           options={branchOptions}
           onChange={setBranchFilter}
-          className="w-full sm:ml-auto sm:w-44"
+          className="w-full sm:w-56 xl:ml-auto xl:w-44"
         />
-      </div>
-
-      {/* Row 2: date filter on its own line (tidier on tablet). Preset modes +
-          the from/to pickers (Custom mode only). */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="inline-flex overflow-hidden rounded-lg border border-slate-300">
-          <DateChip active={mode === 'today'} onClick={() => setMode('today')}>
-            Today
-          </DateChip>
-          <DateChip active={mode === 'yesterday'} onClick={() => setMode('yesterday')} bordered>
-            Yesterday
-          </DateChip>
-          <DateChip active={mode === '7d'} onClick={() => setMode('7d')} bordered>
-            7 days
-          </DateChip>
-          <DateChip active={mode === 'all'} onClick={() => setMode('all')} bordered>
-            All
-          </DateChip>
-          <DateChip active={mode === 'custom'} onClick={() => setMode('custom')} bordered>
-            Custom
-          </DateChip>
-        </div>
-        {/* From/to pickers appear only in Custom mode. */}
-        {mode === 'custom' && (
-          <div className="flex w-full items-center gap-1.5 text-sm text-slate-500 sm:w-auto">
-            <input
-              type="date"
-              value={toDateInputValue(customFrom)}
-              max={toDateInputValue(customTo)}
-              onChange={(e) => {
-                const d = localDateFromInput(e.target.value)
-                if (d) setCustomFrom(d)
-              }}
-              className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 sm:flex-none"
-            />
-            <span>–</span>
-            <input
-              type="date"
-              value={toDateInputValue(customTo)}
-              min={toDateInputValue(customFrom)}
-              onChange={(e) => {
-                const d = localDateFromInput(e.target.value)
-                if (d) setCustomTo(d)
-              }}
-              className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 sm:flex-none"
-            />
-          </div>
-        )}
       </div>
 
       {isLoading && (
@@ -236,10 +239,9 @@ export function DailyCheckins() {
             <table className="w-full text-left text-sm">
               <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-500 shadow-sm">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Time</th>
-                  <th className="px-4 py-3 font-medium">Customer</th>
-                  <th className="px-4 py-3 font-medium">Branch</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="w-14 px-2 py-3 font-medium sm:w-24 sm:px-4">Time</th>
+                  <th className="px-2 py-3 font-medium sm:px-4">Customer</th>
+                  <th className="px-2 py-3 text-right font-medium sm:px-4 sm:text-left">Branch</th>
                 </tr>
               </thead>
               <tbody>
@@ -260,7 +262,7 @@ export function DailyCheckins() {
                 })}
                 {pageItems.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-16 text-center text-slate-400">
+                    <td colSpan={3} className="px-4 py-16 text-center text-slate-400">
                       {search.trim() || branchFilter !== ALL
                         ? 'No check-ins match your filters in this range.'
                         : 'No check-ins in this range.'}
@@ -300,7 +302,7 @@ function ActivityRows({
     <>
       {showDay && (
         <tr>
-          <td colSpan={4} className="sticky top-11 z-[9] p-0">
+          <td colSpan={3} className="sticky top-11 z-[9] p-0">
             <div className="flex items-center gap-2 border-y border-brand-100 bg-brand-50 px-4 py-2">
               <span className="text-sm font-bold text-brand-800">
                 {dayLabel(new Date(r.createdAt))}
@@ -313,12 +315,12 @@ function ActivityRows({
         </tr>
       )}
       <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-        <td className="whitespace-nowrap px-4 py-3 text-slate-600 tabular-nums">
+        <td className="w-14 whitespace-nowrap px-2 py-3 align-top text-xs text-slate-500 tabular-nums sm:w-24 sm:px-4 sm:text-sm">
           {formatTime(r.createdAt)}
         </td>
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+        <td className="px-2 py-3 sm:px-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 sm:flex">
               {initial}
             </span>
             <div className="min-w-0">
@@ -326,19 +328,19 @@ function ActivityRows({
                 {r.customerId ? (
                   <Link
                     to={`/admin/customers/${r.customerId}`}
-                    className="font-medium text-slate-800 hover:text-brand-700 hover:underline"
+                    className="truncate font-medium text-slate-800 hover:text-brand-700 hover:underline"
                   >
                     {r.customerName}
                   </Link>
                 ) : (
-                  <span className="font-medium text-slate-800">{r.customerName}</span>
+                  <span className="truncate font-medium text-slate-800">{r.customerName}</span>
                 )}
                 {r.customerId &&
                   (() => {
                     const badge = tierBadge(customerTier(r.customerLifetimePoints))
                     return (
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+                        className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium ${badge.className}`}
                       >
                         {badge.label}
                       </span>
@@ -346,59 +348,48 @@ function ActivityRows({
                   })()}
               </div>
               {r.customerPhone && (
-                <div className="text-xs text-slate-400">{formatPhone(r.customerPhone)}</div>
+                <div className="whitespace-nowrap text-xs text-slate-400">
+                  {formatPhone(r.customerPhone)}
+                </div>
               )}
             </div>
           </div>
         </td>
-        <td className="px-4 py-3">
+        <td className="px-2 py-3 text-right align-top sm:px-4 sm:text-left">
           {r.branchName ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-              📍 {r.branchName}
+            <span className="inline-flex max-w-[7rem] items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 sm:max-w-none">
+              <span aria-hidden>📍</span>
+              <span className="truncate">{r.branchName}</span>
             </span>
           ) : (
             <span className="text-slate-400">—</span>
           )}
-        </td>
-        <td className="px-4 py-3">
-          <StatusPill status={r.status} />
         </td>
       </tr>
     </>
   )
 }
 
-function StatusPill({ status }: { status: string }) {
-  const cls =
-    status === 'completed'
-      ? 'bg-emerald-100 text-emerald-700'
-      : status === 'in_service'
-        ? 'bg-sky-100 text-sky-700'
-        : status === 'cancelled'
-          ? 'bg-slate-100 text-slate-500'
-          : 'bg-amber-100 text-amber-700' // waiting
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{status}</span>
-  )
-}
-
 const BRANCH_ACCENTS = ['sky', 'violet', 'pink', 'amber'] as const
 type Accent = 'brand' | 'slate' | (typeof BRANCH_ACCENTS)[number]
 
-// A dashboard stat tile: big number, small label, a left accent bar for colour.
-// Fixed height (h-16) so a value change or the loading skeleton never resizes it.
+// A compact stat tile: a coloured dot, the number, then the label — all on ONE
+// line so the whole metrics strip is short and doesn't push the table down. The
+// number swaps to a skeleton while loading (fixed min-width so it doesn't jump).
 function StatTile({
   label,
+  fullLabel,
   value,
   accent,
   loading = false,
 }: {
   label: string
+  fullLabel?: string
   value: number
   accent: Accent
   loading?: boolean
 }) {
-  const bar: Record<Accent, string> = {
+  const dot: Record<Accent, string> = {
     brand: 'bg-brand-500',
     slate: 'bg-slate-400',
     sky: 'bg-sky-500',
@@ -407,16 +398,17 @@ function StatTile({
     amber: 'bg-amber-500',
   }
   return (
-    <div className="flex h-16 items-stretch overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className={`w-1.5 shrink-0 ${bar[accent]}`} />
-      <div className="flex min-w-0 flex-col justify-center px-4">
-        {loading ? (
-          <div className="h-7 w-10 animate-pulse rounded bg-slate-200" />
-        ) : (
-          <div className="text-2xl font-bold tabular-nums leading-7 text-slate-800">{value}</div>
-        )}
-        <div className="truncate text-xs font-medium text-slate-500">{label}</div>
-      </div>
+    <div className="flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 sm:min-w-0">
+      <span className={`h-2 w-2 shrink-0 rounded-full ${dot[accent]}`} />
+      {loading ? (
+        <span className="h-5 w-6 animate-pulse rounded bg-slate-200" />
+      ) : (
+        <span className="text-lg font-bold leading-none tabular-nums text-slate-800">{value}</span>
+      )}
+      <span className="truncate text-xs font-medium text-slate-500">
+        <span className={fullLabel ? 'sm:hidden' : ''}>{label}</span>
+        {fullLabel && <span className="hidden sm:inline">{fullLabel}</span>}
+      </span>
     </div>
   )
 }
