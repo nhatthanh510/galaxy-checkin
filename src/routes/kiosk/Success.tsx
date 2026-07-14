@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NextButton } from '../../components/NextButton'
-import { useCreateCheckin, useRedeemPoints, AlreadyCheckedInTodayError } from '../../lib/queries'
+import {
+  useCreateCheckin,
+  useRedeemPoints,
+  useDeviceBranch,
+  AlreadyCheckedInTodayError,
+} from '../../lib/queries'
 import { useEligiblePromotions } from '../../lib/useEligiblePromotions'
 import { customerTier, tierBadgeKiosk } from '../../lib/tier'
 import type { Customer } from '../../types'
@@ -25,6 +30,8 @@ export function Success() {
   const flow = useKioskFlow()
   const createCheckin = useCreateCheckin()
   const redeem = useRedeemPoints()
+  // This tablet's assigned branch (null when unassigned — check-in stays branchless).
+  const { branch: deviceBranch } = useDeviceBranch()
   const [status, setStatus] = useState<Status>('submitting')
   // The customer as of after check-in — drives reward eligibility. Updated in
   // place after each redeem/claim so the offered rewards recompute.
@@ -56,6 +63,8 @@ export function Success() {
         consent: flow.consent,
         // Every check-in earns +1 — including visits where a reward is redeemed.
         awardPoint: true,
+        // Stamp the visit with this tablet's branch (null when unassigned).
+        branchId: deviceBranch?.id ?? null,
       })
       .then((result) => {
         // Build the post-check-in customer. For a KNOWN customer, keep their

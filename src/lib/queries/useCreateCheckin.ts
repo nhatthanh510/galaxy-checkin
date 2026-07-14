@@ -19,10 +19,10 @@ export class AlreadyCheckedInTodayError extends Error {
   }
 }
 
-// Create a checkin (status `waiting`) via the create_checkin RPC, which upserts
-// the customer by phone and links services atomically. Then fires the (stubbed)
-// confirmation notification. Loyalty points are NOT awarded here — that happens
-// when a checkin is marked `completed` (a later staff-side pass).
+// Create a checkin (status `completed` — a kiosk visit is finished at check-in;
+// there's no staff live-queue transition) via the create_checkin RPC, which
+// upserts the customer by phone and links services atomically. Then fires the
+// (stubbed) confirmation notification. The +1 loyalty point is awarded here.
 export function useCreateCheckin() {
   return useMutation<CreateCheckinResult, Error, CreateCheckinInput>({
     mutationFn: async (input) => {
@@ -37,6 +37,8 @@ export function useCreateCheckin() {
         p_award_point: input.awardPoint ?? true,
         // Local day boundary (tablet timezone) for the once-per-day guard.
         p_day_start: startOfLocalDayISO(),
+        // This tablet's assigned branch, or null when unassigned (branchless).
+        p_branch_id: input.branchId ?? null,
       })
       if (error) {
         // The RPC raises this when the customer already checked in today.
@@ -55,7 +57,8 @@ export function useCreateCheckin() {
           id: row.checkin_id,
           customerId: row.customer_id,
           serviceIds: input.serviceIds,
-          status: 'waiting',
+          // The RPC records the visit as completed (no staff queue transition).
+          status: 'completed',
           createdAt: new Date().toISOString(),
         },
         customer: {
@@ -66,6 +69,8 @@ export function useCreateCheckin() {
           pointsBalance: row.points_balance,
           lifetimePoints: row.lifetime_points,
           lastVisitAt: null,
+          // Not returned by the RPC; the kiosk success screen doesn't use it.
+          lastVisitBranchName: null,
           birthday: input.birthday,
           // create_checkin doesn't return the redeemed year; the caller (Success)
           // carries the known customer's value forward for birthday eligibility.

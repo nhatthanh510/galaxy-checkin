@@ -23,6 +23,7 @@ interface CheckinJoinRow {
   status: CheckinStatus
   created_at: string
   checkin_service: { service: { name: string } | null }[]
+  branch: { name: string } | null
 }
 
 // Admin: fetch a customer with their visit history (services resolved) and
@@ -40,7 +41,7 @@ export function useCustomer(id: string | undefined) {
           supabase
             .from('checkin')
             .select(
-              'id, status, created_at, checkin_service(service:service_id(name))',
+              'id, status, created_at, checkin_service(service:service_id(name)), branch:branch_id(name)',
             )
             .eq('customer_id', id)
             .order('created_at', { ascending: false }),
@@ -61,6 +62,7 @@ export function useCustomer(id: string | undefined) {
         serviceNames: (r.checkin_service ?? [])
           .map((cs) => cs.service?.name)
           .filter((n): n is string => Boolean(n)),
+        branchName: r.branch?.name ?? null,
       }))
 
       return {

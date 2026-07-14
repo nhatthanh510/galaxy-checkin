@@ -43,6 +43,19 @@ export type { ServiceInput } from './useServicesAdmin'
 // App settings (birthday window).
 export { useSettings, useUpdateSettings, settingsKey } from './useSettings'
 
+// Branches (admin CRUD; kiosk read + device-branch resolution).
+export {
+  useBranches,
+  useDeviceBranch,
+  useCreateBranch,
+  useUpdateBranch,
+  branchesKey,
+} from './useBranches'
+
+// Daily check-ins report (admin).
+export { useCheckinsReport } from './useCheckinsReport'
+export type { CheckinReportRow } from './useCheckinsReport'
+
 // Service groups (admin CRUD; kiosk read).
 export {
   useServiceGroups,

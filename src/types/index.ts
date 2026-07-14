@@ -10,6 +10,7 @@ export interface Customer {
   pointsBalance: number // current redeemable points
   lifetimePoints: number // total points earned over history, before redemptions
   lastVisitAt: string | null // ISO timestamp of most recent visit, or null
+  lastVisitBranchName: string | null // branch of the most recent visit (null if none/branchless)
   birthday: string | null // "YYYY-MM-DD" or null
   birthdayRedeemedYear: number | null // year the birthday benefit was last claimed
   marketingConsent: boolean // opted in to marketing SMS
@@ -29,6 +30,16 @@ export interface Service {
   groupId: string | null
   price: number // in dollars
   durationMinutes: number
+  active: boolean
+}
+
+// A physical salon branch (e.g. Kings Meadows, Brisbane). Belongs to a *visit*,
+// not a customer — each check-in stamps where it happened. Admins manage these
+// in /admin/branches; a kiosk tablet stores its branch `slug` in localStorage.
+export interface Branch {
+  id: string
+  name: string
+  slug: string // stable kebab-case id the tablet stores
   active: boolean
 }
 
@@ -113,6 +124,9 @@ export interface CreateCheckinInput {
   // Award the +1 check-in point? False when the customer redeemed a points
   // reward this visit (a redeemed visit doesn't earn). Defaults to true.
   awardPoint?: boolean
+  // Which branch this tablet is assigned to (null when unassigned — the check-in
+  // is then recorded with no branch).
+  branchId: string | null
 }
 
 // App-wide configurable settings (single row).
@@ -133,6 +147,7 @@ export interface CheckinHistoryItem {
   status: CheckinStatus
   createdAt: string
   serviceNames: string[]
+  branchName: string | null // where the visit happened (null = unassigned)
 }
 
 export interface CreateCheckinResult {
@@ -158,6 +173,9 @@ export interface CustomerRow {
   marketing_consent?: boolean
   notes?: string
   created_at?: string
+  // Embedded FK join to the last-visit branch (name only). Present only when the
+  // select requests it; a branchless/absent last visit yields null.
+  last_visit_branch?: { name: string } | null
 }
 
 export interface AppSettingsRow {
@@ -204,6 +222,15 @@ export interface CheckinRow {
   customer_id: string
   status: CheckinStatus
   created_at: string
+  branch_id?: string | null
+}
+
+export interface BranchRow {
+  id: string
+  name: string
+  slug: string
+  active: boolean
+  created_at?: string
 }
 
 export interface LoyaltyTransactionRow {

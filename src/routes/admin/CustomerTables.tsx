@@ -19,6 +19,7 @@ export function VisitHistory({ checkins }: { checkins: CheckinHistoryItem[] }) {
             <thead className="border-b border-slate-200 bg-slate-50 text-slate-500">
               <tr>
                 <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2 font-medium">Branch</th>
                 <th className="px-4 py-2 font-medium">Services</th>
                 <th className="px-4 py-2 font-medium">Status</th>
               </tr>
@@ -105,6 +106,13 @@ function VisitRow({ visit }: { visit: CheckinHistoryItem }) {
     <tr className="border-b border-slate-100 last:border-0">
       <td className="px-4 py-2 text-slate-600">
         {new Date(visit.createdAt).toLocaleString()}
+      </td>
+      <td className="px-4 py-2 text-slate-600">
+        {visit.branchName ? (
+          <span className="whitespace-nowrap">📍 {visit.branchName}</span>
+        ) : (
+          <span className="text-slate-300">—</span>
+        )}
       </td>
       <td className="px-4 py-2 text-slate-600">
         {visit.serviceNames.length > 0 ? visit.serviceNames.join(', ') : '—'}

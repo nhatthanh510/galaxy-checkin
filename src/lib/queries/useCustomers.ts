@@ -18,7 +18,9 @@ export function useCustomers() {
       for (let from = 0; ; from += PAGE_SIZE) {
         const { data, error } = await getSupabase()
           .from('customer')
-          .select('*')
+          // Join the last-visit branch name so the list can show where they last
+          // went. `*` keeps every scalar column; the alias adds the nested branch.
+          .select('*, last_visit_branch:last_visit_branch_id(name)')
           // Most recently-visited first; never-visited (null) sort last. Name is
           // a stable tiebreaker so paging through .range() is deterministic.
           .order('last_visit_at', { ascending: false, nullsFirst: false })

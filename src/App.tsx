@@ -8,6 +8,7 @@ import { PhoneEntry } from './routes/kiosk/PhoneEntry'
 import { NameEntry } from './routes/kiosk/NameEntry'
 import { ServiceSelection } from './routes/kiosk/ServiceSelection'
 import { Success } from './routes/kiosk/Success'
+import { BranchSetup } from './routes/kiosk/BranchSetup'
 import { Login } from './routes/Login'
 import { AdminLayout } from './routes/admin/AdminLayout'
 import { CustomersList } from './routes/admin/CustomersList'
@@ -19,6 +20,8 @@ import { GroupsManage } from './routes/admin/GroupsManage'
 import { SmsTemplates } from './routes/admin/SmsTemplates'
 import { Marketing } from './routes/admin/Marketing'
 import { Settings } from './routes/admin/Settings'
+import { BranchesManage } from './routes/admin/BranchesManage'
+import { DailyCheckins } from './routes/admin/DailyCheckins'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +57,17 @@ export default function App() {
               }
             >
               <Route path="/" element={<PhoneEntry />} />
+              {/* Assigning this tablet's branch is admin-only; staff view it
+                  read-only in the kiosk header. Wrapped in RequireAdmin so a
+                  staff account is bounced with "not authorized". */}
+              <Route
+                path="/kiosk/setup"
+                element={
+                  <RequireAdmin>
+                    <BranchSetup />
+                  </RequireAdmin>
+                }
+              />
               <Route path="/kiosk/name" element={<NameEntry />} />
               <Route path="/kiosk/services" element={<ServiceSelection />} />
               <Route path="/kiosk/success" element={<Success />} />
@@ -72,8 +86,10 @@ export default function App() {
               <Route path="customers" element={<CustomersList />} />
               <Route path="customers/import" element={<CustomerImport />} />
               <Route path="customers/:id" element={<CustomerDetail />} />
+              <Route path="checkins" element={<DailyCheckins />} />
               <Route path="services" element={<ServicesManage />} />
               <Route path="groups" element={<GroupsManage />} />
+              <Route path="branches" element={<BranchesManage />} />
               <Route path="loyalty" element={<LoyaltySettings />} />
               <Route path="sms-templates" element={<SmsTemplates />} />
               <Route path="marketing" element={<Marketing />} />

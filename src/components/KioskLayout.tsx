@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useKioskFlow } from '../routes/kiosk/useKioskFlow'
 import { useRefreshCustomerOnFocus } from '../routes/kiosk/useRefreshCustomerOnFocus'
 import { useAuth } from '../lib/auth/useAuth'
+import { useDeviceBranch } from '../lib/queries'
 
 interface KioskLayoutOptions {
   showStartOver?: boolean
@@ -20,6 +21,9 @@ export function KioskLayout({ children, showStartOver = true }: KioskLayoutProps
   const navigate = useNavigate()
   const { reset } = useKioskFlow()
   const { isAdmin, signOut } = useAuth()
+  // This tablet's assigned branch — shown to staff so it's clear where check-ins
+  // are being recorded, with a link to re-assign. Null = unassigned (branchless).
+  const { branch: deviceBranch } = useDeviceBranch()
 
   // Reflect external redeems (e.g. from the admin side) on the active kiosk
   // customer when the tab regains focus.
@@ -52,6 +56,26 @@ export function KioskLayout({ children, showStartOver = true }: KioskLayoutProps
             >
               ↺ Start over
             </button>
+          )}
+          {/* This tablet's branch. Read-only for staff; only an admin can change
+              it (links to the admin-gated setup screen). "Not set" when
+              unassigned — check-ins stay branchless. */}
+          {isAdmin ? (
+            <Link
+              to="/kiosk/setup"
+              className="rounded-xl bg-white/5 px-3 py-2 text-xs font-medium text-white/50 hover:bg-white/10 sm:text-sm"
+              title="Set which branch this tablet is at (admin)"
+            >
+              📍 {deviceBranch ? deviceBranch.name : 'Not set'}
+              <span className="ml-1 text-white/30">· change</span>
+            </Link>
+          ) : (
+            <span
+              className="rounded-xl bg-white/5 px-3 py-2 text-xs font-medium text-white/50 sm:text-sm"
+              title="This tablet's branch"
+            >
+              📍 {deviceBranch ? deviceBranch.name : 'Not set'}
+            </span>
           )}
           {/* Staff/admin controls (this is a logged-in staff tablet). */}
           {isAdmin && (

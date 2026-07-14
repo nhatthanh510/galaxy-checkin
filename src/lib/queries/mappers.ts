@@ -1,5 +1,7 @@
 // Map Supabase DB rows (snake_case) to camelCase domain types.
 import type {
+  Branch,
+  BranchRow,
   Customer,
   CustomerRow,
   LoyaltyProgram,
@@ -23,6 +25,7 @@ export function mapCustomer(row: CustomerRow): Customer {
     pointsBalance: row.points_balance,
     lifetimePoints: row.lifetime_points ?? 0,
     lastVisitAt: row.last_visit_at ?? null,
+    lastVisitBranchName: row.last_visit_branch?.name ?? null,
     birthday: row.birthday ?? null,
     birthdayRedeemedYear: row.birthday_redeemed_year ?? null,
     marketingConsent: row.marketing_consent ?? false,
@@ -55,6 +58,10 @@ export function mapService(row: ServiceRow): Service {
 
 export function mapServiceGroup(row: ServiceGroupRow): ServiceGroup {
   return { id: row.id, name: row.name, active: row.active }
+}
+
+export function mapBranch(row: BranchRow): Branch {
+  return { id: row.id, name: row.name, slug: row.slug, active: row.active }
 }
 
 export function mapLoyaltyProgram(row: LoyaltyProgramRow): LoyaltyProgram {

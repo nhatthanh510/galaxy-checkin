@@ -5,8 +5,10 @@ import { useAuth } from '../../lib/auth/useAuth'
 // Nav items with an icon (used in the collapsed desktop rail) + label.
 const NAV_ITEMS = [
   { to: '/admin/customers', label: 'Customers', icon: '👥' },
+  { to: '/admin/checkins', label: 'Check-ins', icon: '📋' },
   { to: '/admin/services', label: 'Services', icon: '💅' },
   { to: '/admin/groups', label: 'Groups', icon: '🗂️' },
+  { to: '/admin/branches', label: 'Branches', icon: '📍' },
   { to: '/admin/loyalty', label: 'Loyalty settings', icon: '🎁' },
   { to: '/admin/marketing', label: 'Marketing SMS', icon: '📣' },
   { to: '/admin/sms-templates', label: 'SMS templates', icon: '✉️' },

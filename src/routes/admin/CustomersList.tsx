@@ -6,6 +6,7 @@ import {
   useLoyaltyProgram,
   useSettings,
   useCheckinCustomerIdsOnDate,
+  useBranches,
 } from '../../lib/queries'
 import { CSV_HEADERS, downloadCsv, toCsv } from '../../lib/csv'
 import { formatDateTime, localDateFromInput, toDateInputValue } from '../../lib/day'
@@ -41,6 +42,9 @@ export function CustomersList() {
   const [birthdayOnly, setBirthdayOnly] = useState(false)
   // Filter to customers who checked in on this local day; null = filter off.
   const [checkinDate, setCheckinDate] = useState<Date | null>(null)
+  // Optionally scope the date filter to one branch. '' = all branches. Only
+  // meaningful with a date chosen (branch belongs to a visit, so it's per-day).
+  const [checkinBranchId, setCheckinBranchId] = useState<string>('')
   // Whether the "Custom" date picker is revealed (independent of a date being
   // chosen yet, so the picker can show before the user picks).
   const [customDateOpen, setCustomDateOpen] = useState(false)
@@ -66,9 +70,11 @@ export function CustomersList() {
   const threshold = program?.pointsPerReward ?? null
   const isEligible = (points: number) => threshold != null && points >= threshold
 
-  // Customer IDs that checked in on the selected date (only fetched when set).
+  // Customer IDs that checked in on the selected date (only fetched when set),
+  // optionally scoped to a branch.
   const { data: checkinIds, isFetching: checkinIdsLoading } =
-    useCheckinCustomerIdsOnDate(checkinDate)
+    useCheckinCustomerIdsOnDate(checkinDate, checkinBranchId || null)
+  const { data: branches } = useBranches(true)
 
   // Birthday status for a customer, using the configured window (default 7/7).
   const today = new Date()
@@ -196,17 +202,22 @@ export function CustomersList() {
     !customDateOpen && checkinDate != null && isSameLocalDay(checkinDate, dayOffset(0))
   const yesterdayActive =
     !customDateOpen && checkinDate != null && isSameLocalDay(checkinDate, dayOffset(-1))
-  // Set a preset day (or clear when the active one is tapped again).
+  // Set a preset day (or clear when the active one is tapped again). Clearing the
+  // date also clears the branch (branch filtering is only meaningful per-day).
   const setPreset = (d: Date | null) => {
     setCustomDateOpen(false)
     setCheckinDate(d)
+    if (d == null) setCheckinBranchId('')
     setPage(0)
   }
   // Enter/leave Custom mode; keep any already-chosen date so the picker seeds.
   const toggleCustom = () => {
     setCustomDateOpen((open) => {
       const next = !open
-      if (!next) setCheckinDate(null) // leaving Custom clears the filter
+      if (!next) {
+        setCheckinDate(null) // leaving Custom clears the filter
+        setCheckinBranchId('') // and its branch scope
+      }
       setPage(0)
       return next
     })
@@ -256,13 +267,24 @@ export function CustomersList() {
       label: dateChipLabel(),
       clear: () => setPreset(null),
     },
+    dateFilterActive &&
+      checkinBranchId && {
+        key: 'branch',
+        label: `Branch: ${
+          (branches ?? []).find((b) => b.id === checkinBranchId)?.name ?? 'Selected'
+        }`,
+        clear: () => {
+          setCheckinBranchId('')
+          setPage(0)
+        },
+      },
   ].filter((x): x is { key: string; label: string; clear: () => void } => Boolean(x))
 
   const clearAllFilters = () => {
     setSearch('')
     setEligibleOnly(false)
     setBirthdayOnly(false)
-    setPreset(null)
+    setPreset(null) // also clears the branch scope
     setPage(0)
   }
 
@@ -283,7 +305,8 @@ export function CustomersList() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-4">
+      {/* Row 1: search (grows) + sort (right). Stacks on narrow widths. */}
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center">
         <TextInput
           value={search}
           onChange={(e) => {
@@ -291,8 +314,28 @@ export function CustomersList() {
             setPage(0)
           }}
           placeholder="Search by name or phone…"
-          className="max-w-md"
+          className="w-full sm:max-w-md"
         />
+        <div className="flex items-center gap-2 text-sm text-slate-600 sm:ml-auto">
+          <span className="shrink-0">Sort by</span>
+          <Select
+            value={sortBy}
+            aria-label="Sort customers by"
+            options={(Object.keys(SORT_LABELS) as SortKey[]).map((k) => ({
+              value: k,
+              label: SORT_LABELS[k],
+            }))}
+            onChange={(k) => {
+              setSortBy(k)
+              setPage(0)
+            }}
+            className="w-44"
+          />
+        </div>
+      </div>
+
+      {/* Row 2: filters. Wrap as a unit so the layout stays tidy at any width. */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2">
         {threshold != null && (
           <label className="flex items-center gap-2 text-sm text-slate-600">
             <input
@@ -304,7 +347,7 @@ export function CustomersList() {
               }}
               className="h-4 w-4 accent-emerald-600"
             />
-            Redeem-eligible only
+            Redeem-eligible
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
               {eligibleCount}
             </span>
@@ -327,11 +370,12 @@ export function CustomersList() {
         </label>
 
         {/* Checked-in-on-date filter: a segmented control — Today / Yesterday /
-            Custom. Custom reveals a date picker. The active chip fills brand and
-            shows how many customers checked in that day. */}
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+            Custom. Custom reveals a date picker. The active chip shows how many
+            customers checked in that day. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-sm text-slate-600">
           <span className="text-slate-500">Checked in:</span>
-          <div className="inline-flex overflow-hidden rounded-lg border border-slate-300">
+          {/* Keep the segmented control together (never split mid-way). */}
+          <div className="inline-flex shrink-0 overflow-hidden rounded-lg border border-slate-300">
             <DateChip active={todayActive} onClick={() => setPreset(todayActive ? null : dayOffset(0))}>
               Today
             </DateChip>
@@ -351,31 +395,32 @@ export function CustomersList() {
               type="date"
               value={checkinDate ? toDateInputValue(checkinDate) : ''}
               onChange={(e) => setCustomDate(localDateFromInput(e.target.value))}
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+              className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 lg:w-auto"
+            />
+          )}
+          {/* Branch scope — appears once a date is chosen (branch is per-visit,
+              so it's inherently date-scoped). */}
+          {dateFilterActive && (branches ?? []).length > 0 && (
+            <Select
+              value={checkinBranchId}
+              aria-label="Filter by branch"
+              placeholder="All branches"
+              options={[
+                { value: '', label: 'All branches' },
+                ...(branches ?? []).map((b) => ({ value: b.id, label: b.name })),
+              ]}
+              onChange={(v) => {
+                setCheckinBranchId(v)
+                setPage(0)
+              }}
+              className="w-full lg:w-40"
             />
           )}
           {dateFilterActive && (
             <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
-              {checkinIdsLoading ? '…' : `${checkinIds?.size ?? 0} checked in`}
+              {checkinIdsLoading ? '…' : `${checkinIds?.size ?? 0} found`}
             </span>
           )}
-        </div>
-
-        <div className="ml-auto flex items-center gap-2 text-sm text-slate-600">
-          <span className="shrink-0">Sort by</span>
-          <Select
-            value={sortBy}
-            aria-label="Sort customers by"
-            options={(Object.keys(SORT_LABELS) as SortKey[]).map((k) => ({
-              value: k,
-              label: SORT_LABELS[k],
-            }))}
-            onChange={(k) => {
-              setSortBy(k)
-              setPage(0)
-            }}
-            className="w-40"
-          />
         </div>
       </div>
 
@@ -513,9 +558,10 @@ export function CustomersList() {
                             </span>
                           )}
                         </div>
-                        <div className="text-slate-500">
-                          🕐 {formatDateTime(c.lastVisitAt)}
-                        </div>
+                        <div className="text-slate-500">🕐 {formatDateTime(c.lastVisitAt)}</div>
+                        {c.lastVisitBranchName && (
+                          <div className="text-slate-500">📍 {c.lastVisitBranchName}</div>
+                        )}
                         {c.notes.trim() !== '' && (
                           <NoteCell
                             notes={c.notes}
@@ -549,7 +595,10 @@ export function CustomersList() {
                       </div>
                     </td>
                     <td className="hidden px-4 py-3 align-top text-slate-600 lg:table-cell whitespace-nowrap">
-                      {formatDateTime(c.lastVisitAt)}
+                      <div>{formatDateTime(c.lastVisitAt)}</div>
+                      {c.lastVisitBranchName && (
+                        <div className="text-xs text-slate-400">📍 {c.lastVisitBranchName}</div>
+                      )}
                     </td>
                     <td className="px-4 py-3 align-top">
                       {/* Desktop (lg+): balance + Redeemable chip on one line. */}
