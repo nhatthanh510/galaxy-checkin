@@ -239,7 +239,7 @@ export function DailyCheckins() {
             <table className="w-full text-left text-sm">
               <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-slate-500 shadow-sm">
                 <tr>
-                  <th className="w-14 px-2 py-3 font-medium sm:w-24 sm:px-4">Time</th>
+                  <th className="w-20 px-3 py-3 font-medium sm:w-24 sm:px-4">Time</th>
                   <th className="px-2 py-3 font-medium sm:px-4">Customer</th>
                   <th className="px-2 py-3 text-right font-medium sm:px-4 sm:text-left">Branch</th>
                 </tr>
@@ -315,15 +315,16 @@ function ActivityRows({
         </tr>
       )}
       <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-        <td className="w-14 whitespace-nowrap px-2 py-3 align-top text-xs text-slate-500 tabular-nums sm:w-24 sm:px-4 sm:text-sm">
+        <td className="w-20 whitespace-nowrap px-3 py-3 align-middle text-xs text-slate-500 tabular-nums sm:w-24 sm:px-4 sm:text-sm">
           {formatTime(r.createdAt)}
         </td>
-        <td className="px-2 py-3 sm:px-4">
+        <td className="w-full px-2 py-3 align-middle sm:px-4">
           <div className="flex items-center gap-2 sm:gap-3">
             <span className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700 sm:flex">
               {initial}
             </span>
-            <div className="min-w-0">
+            {/* Cap the name block so a long name can't crowd out the branch. */}
+            <div className="min-w-0 max-w-[10rem] sm:max-w-none">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 {r.customerId ? (
                   <Link
@@ -355,11 +356,11 @@ function ActivityRows({
             </div>
           </div>
         </td>
-        <td className="px-2 py-3 text-right align-top sm:px-4 sm:text-left">
+        <td className="whitespace-nowrap px-2 py-3 text-right align-middle sm:px-4 sm:text-left">
           {r.branchName ? (
-            <span className="inline-flex max-w-[7rem] items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 sm:max-w-none">
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
               <span aria-hidden>📍</span>
-              <span className="truncate">{r.branchName}</span>
+              {r.branchName}
             </span>
           ) : (
             <span className="text-slate-400">—</span>
