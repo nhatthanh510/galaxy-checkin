@@ -12,6 +12,10 @@ import { localDayRangeISO } from '../day'
 // SELECT). Pages through in case a busy day exceeds PostgREST's 1000-row cap.
 const PAGE_SIZE = 1000
 
+// Sentinel branchId meaning "only check-ins with no branch" (branch_id IS NULL).
+// Distinct from null/'' which mean "all branches, no branch filter".
+export const UNASSIGNED_BRANCH = '__unassigned__'
+
 export function useCheckinCustomerIdsOnDate(day: Date | null, branchId: string | null = null) {
   // Key by the local-day boundary + branch so the query re-runs when either
   // changes but not on every render (a fresh Date with the same day yields the
@@ -29,7 +33,9 @@ export function useCheckinCustomerIdsOnDate(day: Date | null, branchId: string |
           .select('customer_id')
           .gte('created_at', range.start)
           .lt('created_at', range.end)
-        if (branchId) q = q.eq('branch_id', branchId)
+        // Unassigned = branch_id IS NULL; a real id = equality; null/'' = no filter.
+        if (branchId === UNASSIGNED_BRANCH) q = q.is('branch_id', null)
+        else if (branchId) q = q.eq('branch_id', branchId)
         const { data, error } = await q.range(from, from + PAGE_SIZE - 1)
         if (error) throw error
         const page = (data as { customer_id: string }[]) ?? []

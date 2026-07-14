@@ -7,6 +7,7 @@ import {
   useSettings,
   useCheckinCustomerIdsOnDate,
   useBranches,
+  UNASSIGNED_BRANCH,
 } from '../../lib/queries'
 import { CSV_HEADERS, downloadCsv, toCsv } from '../../lib/csv'
 import { formatDateTime, localDateFromInput, toDateInputValue } from '../../lib/day'
@@ -271,7 +272,9 @@ export function CustomersList() {
       checkinBranchId && {
         key: 'branch',
         label: `Branch: ${
-          (branches ?? []).find((b) => b.id === checkinBranchId)?.name ?? 'Selected'
+          checkinBranchId === UNASSIGNED_BRANCH
+            ? 'Unassigned'
+            : ((branches ?? []).find((b) => b.id === checkinBranchId)?.name ?? 'Selected')
         }`,
         clear: () => {
           setCheckinBranchId('')
@@ -408,6 +411,7 @@ export function CustomersList() {
               options={[
                 { value: '', label: 'All branches' },
                 ...(branches ?? []).map((b) => ({ value: b.id, label: b.name })),
+                { value: UNASSIGNED_BRANCH, label: 'Unassigned' },
               ]}
               onChange={(v) => {
                 setCheckinBranchId(v)

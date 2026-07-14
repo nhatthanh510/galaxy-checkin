@@ -109,6 +109,53 @@ export function DailyCheckins() {
     { value: UNASSIGNED, label: 'Unassigned' },
   ]
 
+  // The active filters, as removable chips (label + how to clear it). Shown as a
+  // row under the controls so it's always obvious what's narrowing the table —
+  // mirrors the customer list. The date chip only appears for a non-default
+  // range ('today' is the default, so it isn't shown as a filter); clearing it
+  // returns to Today. Branch/search clear to their defaults.
+  const dateChipLabel = () => {
+    switch (mode) {
+      case 'yesterday':
+        return 'Date: Yesterday'
+      case '7d':
+        return 'Date: Last 7 days'
+      case 'all':
+        return 'Date: All time'
+      case 'custom':
+        return `Date: ${customFrom.toLocaleDateString()} – ${customTo.toLocaleDateString()}`
+      default:
+        return ''
+    }
+  }
+  const branchChipLabel = () => {
+    if (branchFilter === UNASSIGNED) return 'Branch: Unassigned'
+    return `Branch: ${(branches ?? []).find((b) => b.id === branchFilter)?.name ?? 'Selected'}`
+  }
+  const activeFilters: { key: string; label: string; clear: () => void }[] = [
+    search.trim() && {
+      key: 'search',
+      label: `Search: "${search.trim()}"`,
+      clear: () => setSearch(''),
+    },
+    mode !== 'today' && {
+      key: 'date',
+      label: dateChipLabel(),
+      clear: () => setMode('today'),
+    },
+    branchFilter !== ALL && {
+      key: 'branch',
+      label: branchChipLabel(),
+      clear: () => setBranchFilter(ALL),
+    },
+  ].filter((x): x is { key: string; label: string; clear: () => void } => Boolean(x))
+
+  const clearAllFilters = () => {
+    setSearch('')
+    setMode('today')
+    setBranchFilter(ALL)
+  }
+
   // Reset to page 1 when filters/range change (usePagination clamps, but this
   // snaps back to the top rather than the last valid page of a shorter list).
   const resetKey = `${from ? toDateInputValue(from) : 'all'}|${
@@ -219,6 +266,39 @@ export function DailyCheckins() {
           className="w-full sm:w-56 xl:ml-auto xl:w-44"
         />
       </div>
+
+      {/* Active-filter chips — one removable pill per active filter, so it's
+          always clear what's narrowing the table (mirrors the customer list). */}
+      {activeFilters.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            Filters
+          </span>
+          {activeFilters.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={f.clear}
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand-100 py-1 pl-3 pr-2 text-sm font-medium text-brand-700 hover:bg-brand-200"
+            >
+              {f.label}
+              <span className="text-brand-500" aria-hidden>
+                ✕
+              </span>
+              <span className="sr-only">Remove filter</span>
+            </button>
+          ))}
+          {activeFilters.length > 1 && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="text-sm font-medium text-slate-500 hover:text-slate-700"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex-1 animate-pulse rounded-xl border border-slate-200 bg-white" />

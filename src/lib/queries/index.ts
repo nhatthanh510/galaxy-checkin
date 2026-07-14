@@ -13,7 +13,7 @@ export type { RedeemResult, RedeemInput } from './useRedeemPoints'
 
 // Admin hooks.
 export { useCustomers, customersKey } from './useCustomers'
-export { useCheckinCustomerIdsOnDate } from './useCheckinsOnDate'
+export { useCheckinCustomerIdsOnDate, UNASSIGNED_BRANCH } from './useCheckinsOnDate'
 export { useCustomer, useUpdateCustomer, useDeleteCustomer } from './useCustomer'
 export type { CustomerDetail, UpdateCustomerInput } from './useCustomer'
 export { useUpsertCustomers } from './useUpsertCustomers'
