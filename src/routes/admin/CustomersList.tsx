@@ -18,7 +18,7 @@ import {
   formatBirthday,
   formatBirthdayCsv,
 } from '../../lib/birthday'
-import { birthdayPercentForTier, customerTier, tierBadge } from '../../lib/tier'
+import { birthdayPercentForTierName, tierBadge } from '../../lib/tier'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { Button } from '../../components/ui/Button'
 import { Select } from '../../components/ui/Select'
@@ -513,13 +513,13 @@ export function CustomersList() {
                         : eligible
                           ? 'border-emerald-400 hover:bg-slate-50'
                           : 'border-transparent hover:bg-slate-50')
-                const tBadge = tierBadge(customerTier(c.lifetimePoints))
+                const tBadge = tierBadge(c.tier)
                 // The birthday discount this customer would get (tier-based),
                 // shown beside the badge so staff see it at a glance. Only
                 // meaningful while an unclaimed birthday is in-window.
                 const bdayPct =
                   bdayInWindow && settings
-                    ? birthdayPercentForTier(c.lifetimePoints, {
+                    ? birthdayPercentForTierName(c.tier, {
                         new: settings.birthdayPercentNew,
                         regular: settings.birthdayPercentRegular,
                         vip: settings.birthdayPercentVip,

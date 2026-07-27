@@ -2,6 +2,10 @@
 // supabase/migrations/*. The DB uses snake_case; hooks map rows to these shapes
 // via src/lib/queries/mappers.ts. DB row types live at the bottom of this file.
 
+import type { CustomerTier } from '../lib/tier'
+
+export type { CustomerTier }
+
 export interface Customer {
   id: string
   phone: string // primary lookup key, digits only
@@ -9,6 +13,8 @@ export interface Customer {
   visitCount: number
   pointsBalance: number // current redeemable points
   lifetimePoints: number // total points earned over history, before redemptions
+  tier: CustomerTier // persisted, activity-maintained tier (decays with inactivity)
+  tierLocked: boolean // admin pin: exempt from the automatic decay/upgrade flow
   lastVisitAt: string | null // ISO timestamp of most recent visit, or null
   lastVisitBranchName: string | null // branch of the most recent visit (null if none/branchless)
   birthday: string | null // "YYYY-MM-DD" or null
@@ -139,6 +145,54 @@ export interface AppSettings {
   birthdayPercentNew: number
   birthdayPercentRegular: number
   birthdayPercentVip: number
+  // Tier maintenance: a customer keeps a tier only while they visit enough
+  // within a rolling window. Fewer than *MinVisits* check-ins in the last
+  // *WindowMonths* months drops them one tier level per monthly review.
+  tierWindowMonths: number
+  tierVipMinVisits: number
+  tierRegularMinVisits: number
+}
+
+// Tier change audit --------------------------------------------------------
+
+// Where a tier change came from: the monthly review (usually a decay), a
+// check-in recompute (usually an upgrade / recovery), or a manual admin set.
+export type TierChangeSource = 'review' | 'checkin' | 'manual'
+
+// One logged automatic tier movement, with the customer resolved for display.
+export interface TierChange {
+  id: string
+  customerId: string
+  customerName: string
+  customerPhone: string
+  fromTier: CustomerTier
+  toTier: CustomerTier
+  source: TierChangeSource
+  visitsInWindow: number | null
+  createdAt: string // ISO timestamp
+}
+
+// One projected change from a dry-run review preview (before it's applied).
+export interface TierReviewPreviewItem {
+  customerId: string
+  name: string
+  phone: string
+  fromTier: CustomerTier
+  toTier: CustomerTier
+  visitsInWindow: number | null
+  lastVisitAt: string | null
+}
+
+export interface TierChangeRow {
+  id: string
+  customer_id: string
+  from_tier: CustomerTier
+  to_tier: CustomerTier
+  source: TierChangeSource
+  visits_in_window: number | null
+  created_at: string
+  // Embedded FK join to the customer (name + phone), when the select requests it.
+  customer: { name: string; phone: string } | null
 }
 
 // One row of a customer's visit history, with resolved service names.
@@ -167,6 +221,8 @@ export interface CustomerRow {
   visit_count: number
   points_balance: number
   lifetime_points?: number
+  tier?: CustomerTier
+  tier_locked?: boolean
   last_visit_at?: string | null
   birthday: string | null
   birthday_redeemed_year: number | null
@@ -184,6 +240,9 @@ export interface AppSettingsRow {
   birthday_percent_new: number
   birthday_percent_regular: number
   birthday_percent_vip: number
+  tier_window_months: number
+  tier_vip_min_visits: number
+  tier_regular_min_visits: number
 }
 
 export interface ServiceRow {
@@ -250,4 +309,5 @@ export interface CreateCheckinRpcRow {
   points_balance: number
   visit_count: number
   lifetime_points: number
+  tier: CustomerTier
 }

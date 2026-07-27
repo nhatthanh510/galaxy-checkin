@@ -4,7 +4,7 @@ import { useCheckinsReport, useBranches } from '../../lib/queries'
 import type { CheckinReportRow } from '../../lib/queries'
 import { localDateFromInput, toDateInputValue } from '../../lib/day'
 import { formatPhone } from '../../lib/phone'
-import { customerTier, tierBadge } from '../../lib/tier'
+import { tierBadge } from '../../lib/tier'
 import { Select } from '../../components/ui/Select'
 import { TextInput } from '../../components/ui/TextInput'
 import { Pagination } from '../../components/Pagination'
@@ -418,7 +418,7 @@ function ActivityRows({
                 )}
                 {r.customerId &&
                   (() => {
-                    const badge = tierBadge(customerTier(r.customerLifetimePoints))
+                    const badge = tierBadge(r.customerTier)
                     return (
                       <span
                         className={`shrink-0 rounded-full px-1.5 py-0.5 text-[11px] font-medium ${badge.className}`}

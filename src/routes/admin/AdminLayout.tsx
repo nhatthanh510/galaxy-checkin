@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/admin/groups', label: 'Groups', icon: '🗂️' },
   { to: '/admin/branches', label: 'Branches', icon: '📍' },
   { to: '/admin/loyalty', label: 'Loyalty settings', icon: '🎁' },
+  { to: '/admin/tier-changes', label: 'Tier changes', icon: '📈' },
   { to: '/admin/marketing', label: 'Marketing SMS', icon: '📣' },
   { to: '/admin/sms-templates', label: 'SMS templates', icon: '✉️' },
   { to: '/admin/settings', label: 'Settings', icon: '⚙️' },

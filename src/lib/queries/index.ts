@@ -14,8 +14,8 @@ export type { RedeemResult, RedeemInput } from './useRedeemPoints'
 // Admin hooks.
 export { useCustomers, customersKey } from './useCustomers'
 export { useCheckinCustomerIdsOnDate, UNASSIGNED_BRANCH } from './useCheckinsOnDate'
-export { useCustomer, useUpdateCustomer, useDeleteCustomer } from './useCustomer'
-export type { CustomerDetail, UpdateCustomerInput } from './useCustomer'
+export { useCustomer, useUpdateCustomer, useDeleteCustomer, useSetTier } from './useCustomer'
+export type { CustomerDetail, UpdateCustomerInput, SetTierInput } from './useCustomer'
 export { useUpsertCustomers } from './useUpsertCustomers'
 export type { ImportCustomer } from './useUpsertCustomers'
 
@@ -55,6 +55,14 @@ export {
 // Daily check-ins report (admin).
 export { useCheckinsReport } from './useCheckinsReport'
 export type { CheckinReportRow } from './useCheckinsReport'
+
+// Tier change audit log + on-demand review preview/apply (admin).
+export {
+  useTierChanges,
+  useTierReviewPreview,
+  useApplyTierReview,
+  tierChangesKey,
+} from './useTierChanges'
 
 // Service groups (admin CRUD; kiosk read).
 export {

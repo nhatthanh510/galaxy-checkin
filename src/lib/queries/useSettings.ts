@@ -10,6 +10,10 @@ const DEFAULTS: AppSettings = {
   birthdayPercentNew: 10,
   birthdayPercentRegular: 15,
   birthdayPercentVip: 20,
+  tierWindowMonths: 6,
+  // 0 = automatic decay paused (see migration 0017 / Settings page).
+  tierVipMinVisits: 0,
+  tierRegularMinVisits: 0,
 }
 
 // App-wide settings (single row). Readable by anon (kiosk needs the birthday
@@ -21,7 +25,7 @@ export function useSettings() {
       const { data, error } = await getSupabase()
         .from('app_settings')
         .select(
-          'birthday_days_before, birthday_days_after, birthday_percent_new, birthday_percent_regular, birthday_percent_vip',
+          'birthday_days_before, birthday_days_after, birthday_percent_new, birthday_percent_regular, birthday_percent_vip, tier_window_months, tier_vip_min_visits, tier_regular_min_visits',
         )
         .limit(1)
         .maybeSingle()
@@ -34,6 +38,9 @@ export function useSettings() {
         birthdayPercentNew: row.birthday_percent_new,
         birthdayPercentRegular: row.birthday_percent_regular,
         birthdayPercentVip: row.birthday_percent_vip,
+        tierWindowMonths: row.tier_window_months,
+        tierVipMinVisits: row.tier_vip_min_visits,
+        tierRegularMinVisits: row.tier_regular_min_visits,
       }
     },
     staleTime: 60 * 1000,
@@ -56,6 +63,9 @@ export function useUpdateSettings() {
           birthday_percent_new: input.birthdayPercentNew,
           birthday_percent_regular: input.birthdayPercentRegular,
           birthday_percent_vip: input.birthdayPercentVip,
+          tier_window_months: input.tierWindowMonths,
+          tier_vip_min_visits: input.tierVipMinVisits,
+          tier_regular_min_visits: input.tierRegularMinVisits,
           updated_at: new Date().toISOString(),
         })
         .eq('id', true)

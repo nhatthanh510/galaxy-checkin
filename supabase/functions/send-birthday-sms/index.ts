@@ -12,16 +12,17 @@
 
 import { json, renderTemplate, sendSms, serviceClient } from '../_shared/sms.ts'
 
-// Birthday discount percent by loyalty tier, derived from lifetime points.
-// Mirrors src/lib/tier.ts (New < 5, Regular 5..19, VIP >= 20) so the SMS says
-// the same percent the kiosk shows.
+// Birthday discount percent by loyalty tier. The tier is the customer's PERSISTED
+// customer.tier (which decays with inactivity — migration 0017), so a lapsed VIP
+// texted on their birthday gets the percent their current standing warrants, and
+// the SMS matches what the kiosk shows.
 function birthdayPercentForTier(
-  lifetimePoints: number,
+  tier: string | null,
   percents: { newPct: number; regularPct: number; vipPct: number },
 ): number {
-  if (lifetimePoints < 5) return percents.newPct
-  if (lifetimePoints < 20) return percents.regularPct
-  return percents.vipPct
+  if (tier === 'vip') return percents.vipPct
+  if (tier === 'regular') return percents.regularPct
+  return percents.newPct
 }
 
 Deno.serve(async (req: Request) => {
@@ -65,7 +66,7 @@ Deno.serve(async (req: Request) => {
     // year. Birthday stored as YYYY-MM-DD (sentinel year) so match on MM-DD.
     const { data: customers, error } = await supabase
       .from('customer')
-      .select('id, name, phone, birthday, birthday_sms_year, lifetime_points')
+      .select('id, name, phone, birthday, birthday_sms_year, tier')
       .eq('marketing_consent', true)
       .not('birthday', 'is', null)
 
@@ -81,7 +82,7 @@ Deno.serve(async (req: Request) => {
     let sent = 0
     let failed = 0
     for (const c of todays) {
-      const pct = birthdayPercentForTier(Number(c.lifetime_points ?? 0), percents)
+      const pct = birthdayPercentForTier(c.tier ?? null, percents)
       const reward = `${pct}% off`
       const message = renderTemplate(templateBody, { name: c.name ?? 'there', reward })
       const { status } = await sendSms({

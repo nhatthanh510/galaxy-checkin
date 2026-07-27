@@ -68,6 +68,10 @@ export function useCreateCheckin() {
           visitCount: row.visit_count,
           pointsBalance: row.points_balance,
           lifetimePoints: row.lifetime_points,
+          // Recomputed by create_checkin now that this visit is recorded.
+          tier: row.tier,
+          // Not returned by the RPC; the kiosk success screen doesn't use it.
+          tierLocked: false,
           lastVisitAt: null,
           // Not returned by the RPC; the kiosk success screen doesn't use it.
           lastVisitBranchName: null,

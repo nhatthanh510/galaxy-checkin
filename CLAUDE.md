@@ -181,14 +181,41 @@ transitive dev dep declares an overly narrow Node range; installs work with plai
     including visits where a points reward is redeemed (redeeming keeps the +1).
     A points reward is redeemable at the threshold (`balance >= pointsPerReward`)
     on both the kiosk and admin.
-  - **Customer tiers** (`src/lib/tier.ts`, derived from `lifetime_points`): **New** < 5,
-    **Regular** 5–19, **VIP** ≥ 20. Shown as a badge in the admin customer list/detail.
+  - **Customer tiers** (`src/lib/tier.ts`): a tier is **earned** from `lifetime_points`
+    (**New** < 5, **Regular** 5–19, **VIP** ≥ 20) but **maintained** by activity. The
+    effective tier is **persisted** on `customer.tier` (migration `0017`) and **decays one
+    level per monthly review** when a customer's non-cancelled check-ins in a trailing window
+    fall below a threshold (fewer than `vip_min` visits → VIP→Regular; fewer than `reg_min` →
+    Regular→New). The window + thresholds live on `app_settings`
+    (`tier_window_months`/`tier_vip_min_visits`/`tier_regular_min_visits`, admin **Settings**
+    page). **Both visit thresholds default to 0 = decay PAUSED** (a 0 threshold "allows" that
+    tier for everyone, so nobody is downgraded) — this ships the feature off so imported
+    customers (whose check-in history is incomplete — one synthetic visit) aren't wrongly
+    decayed on incomplete data; raise them (e.g. 5 / 3) once real check-in history has built up.
+    The rule lives once in SQL (`next_tier` = step one level toward
+    `min(earned, activity-allowed)`); `create_checkin` recomputes the checking-in customer
+    (prompt upgrades) and the `monthly-tier-review` pg_cron job (`run_tier_review`, 1st of month
+    10:00 UTC) decays the inactive. **Read `customer.tier`, not `customerTier(lifetime_points)`**,
+    for display/rewards — the latter is only the earned ceiling. Shown as a badge in the admin
+    customer list/detail (with a "↓ Lowered for inactivity" chip on detail when the stored tier
+    is below the earned one). Every move — automatic or manual — is logged to `tier_change` (all
+    in migration `0017`) and listed on the admin **Tier changes** page (`/admin/tier-changes`),
+    which shows the automatic-schedule status (next run + paused/active) and a **Preview review**
+    flow: `admin_preview_tier_review` (dry run, with a visits-in-window filter + last-visit
+    column + 100/page paging) → unselect → `admin_apply_tier_review(ids)` applies only the chosen
+    customers. The customer detail page shows visits-in-window + a decay-risk note, and
+    an admin can **manually set + lock** a tier (`customer.tier_locked` via `admin_set_tier`): a
+    locked customer is pinned and skipped by both decay and upgrade. Prefer locking (or editing
+    `lifetime_points`, the earned ceiling) over a raw unlocked tier set, which the one-step engine
+    would otherwise move again.
   - **Birthday discount by tier**: the birthday (`date_window`) reward's percent off is chosen
     by the customer's tier, **not** by the program's `reward_value` (which is ignored for
     birthday programs). The three percents (defaults New 10% / Regular 15% / VIP 20%) live on
     `app_settings` (`birthday_percent_{new,regular,vip}`, migration `0015`) and are editable on
     the admin **Settings** page. `useEligiblePromotions` (kiosk) and `send-birthday-sms` both
-    read them via `birthdayPercentForTier`, so the kiosk reward card, the admin customer detail
+    pick the percent from the customer's **stored, decayed** `customer.tier`
+    (`birthdayPercentForTierName`), so a lapsed VIP who returns only for their birthday gets the
+    percent their current standing warrants — the kiosk reward card, the admin customer detail
     (a "🎂 N% off birthday" chip), and the birthday SMS all show the same percent.
   - **Not yet built**: staff live queue / status transitions, and awarding points on
     `completed` (points are currently granted at check-in, not completion).

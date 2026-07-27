@@ -22,6 +22,7 @@ import { Marketing } from './routes/admin/Marketing'
 import { Settings } from './routes/admin/Settings'
 import { BranchesManage } from './routes/admin/BranchesManage'
 import { DailyCheckins } from './routes/admin/DailyCheckins'
+import { TierChanges } from './routes/admin/TierChanges'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -87,6 +88,7 @@ export default function App() {
               <Route path="customers/import" element={<CustomerImport />} />
               <Route path="customers/:id" element={<CustomerDetail />} />
               <Route path="checkins" element={<DailyCheckins />} />
+              <Route path="tier-changes" element={<TierChanges />} />
               <Route path="services" element={<ServicesManage />} />
               <Route path="groups" element={<GroupsManage />} />
               <Route path="branches" element={<BranchesManage />} />

@@ -1,9 +1,16 @@
 import { Link, useParams } from 'react-router-dom'
 import { useCustomer, useSettings } from '../../lib/queries'
 import { formatPhone } from '../../lib/phone'
-import { birthdayPercentForTier, customerTier, tierBadge, tierName } from '../../lib/tier'
+import {
+  birthdayPercentForTierName,
+  customerTier,
+  tierBadge,
+  tierName,
+  tierRank,
+} from '../../lib/tier'
 import { birthdayStatus, birthdayStatusBadge } from '../../lib/birthday'
 import { ProfileForm } from './CustomerProfileForm'
+import { CustomerTierControl } from './CustomerTierControl'
 import { VisitHistory, LoyaltyTransactions } from './CustomerTables'
 import { DangerZone } from './CustomerDangerZone'
 import { FormSkeleton } from '../../components/ui/Skeleton'
@@ -18,12 +25,19 @@ export function CustomerDetail() {
   if (!data) return null
 
   const { customer, checkins, transactions } = data
-  const tier = customerTier(customer.lifetimePoints)
+  const tier = customer.tier
   const detailTier = tierBadge(tier)
+  // The customer's stored tier sitting BELOW the tier their lifetime points would
+  // earn means they've been downgraded for inactivity (migration 0017). Surface
+  // it so staff understand why an otherwise high-points customer shows a lower
+  // badge — and get their VIP/Regular back by visiting again.
+  const earnedTier = customerTier(customer.lifetimePoints)
+  // Only an *automatic* decay (not a manual lock) shows the inactivity hint.
+  const downgraded = !customer.tierLocked && tierRank(tier) < tierRank(earnedTier)
   // The birthday discount this customer gets, by tier — so staff/admin know the
   // exact percent (matches what the kiosk shows and the birthday SMS sends).
   const birthdayPct = settings
-    ? birthdayPercentForTier(customer.lifetimePoints, {
+    ? birthdayPercentForTierName(tier, {
         new: settings.birthdayPercentNew,
         regular: settings.birthdayPercentRegular,
         vip: settings.birthdayPercentVip,
@@ -57,6 +71,22 @@ export function CustomerDetail() {
             {detailTier.label}
           </span>
         )}
+        {downgraded && (
+          <span
+            className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700 ring-1 ring-amber-200"
+            title="Tier lowered because recent visits fell below the maintenance threshold. Visiting more restores it."
+          >
+            ↓ Lowered for inactivity — earned {tierName(earnedTier)}
+          </span>
+        )}
+        {customer.tierLocked && (
+          <span
+            className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600 ring-1 ring-slate-200"
+            title="An admin pinned this tier; the automatic decay/upgrade flow skips this customer."
+          >
+            🔒 Tier locked
+          </span>
+        )}
         {bdayBadge && (
           <span
             className={`rounded-full px-3 py-1 text-sm font-medium ${bdayBadge.className}`}
@@ -74,6 +104,13 @@ export function CustomerDetail() {
 
       {/* Editable fields — keyed by id so the form re-seeds per customer. */}
       <ProfileForm key={customer.id} customer={customer} />
+
+      <CustomerTierControl
+        key={`tier-${customer.id}`}
+        customer={customer}
+        checkins={checkins}
+        settings={settings}
+      />
 
       <VisitHistory checkins={checkins} />
       <LoyaltyTransactions transactions={transactions} />

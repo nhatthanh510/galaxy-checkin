@@ -4,12 +4,14 @@ import type {
   CheckinStatus,
   Customer,
   CustomerRow,
+  CustomerTier,
   LoyaltyTransaction,
   LoyaltyTransactionRow,
 } from '../../types'
 import { getSupabase } from '../supabase'
 import { mapCustomer, mapLoyaltyTransaction } from './mappers'
 import { customersKey } from './useCustomers'
+import { tierChangesKey } from './useTierChanges'
 
 export interface CustomerDetail {
   customer: Customer
@@ -104,6 +106,35 @@ export function useUpdateCustomer() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['customer', vars.id] })
       qc.invalidateQueries({ queryKey: customersKey })
+    },
+  })
+}
+
+export interface SetTierInput {
+  id: string
+  tier: CustomerTier
+  locked: boolean
+}
+
+// Admin: manually set a customer's tier and lock state via admin_set_tier. A
+// locked customer is pinned — the automatic decay/upgrade flow skips them until
+// unlocked. Logs a 'manual' tier_change when the tier moves.
+export function useSetTier() {
+  const qc = useQueryClient()
+  return useMutation<Customer, Error, SetTierInput>({
+    mutationFn: async (input) => {
+      const { data, error } = await getSupabase().rpc('admin_set_tier', {
+        p_customer_id: input.id,
+        p_tier: input.tier,
+        p_locked: input.locked,
+      })
+      if (error) throw error
+      return mapCustomer(data as CustomerRow)
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['customer', vars.id] })
+      qc.invalidateQueries({ queryKey: customersKey })
+      qc.invalidateQueries({ queryKey: tierChangesKey })
     },
   })
 }

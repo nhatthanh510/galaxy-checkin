@@ -2,7 +2,7 @@ import type { Customer } from '../types'
 import { useActiveLoyaltyPrograms, useSettings } from './queries'
 import { shouldClaimDateWindow } from './birthday'
 import { formatReward } from './reward'
-import { birthdayPercentForTier, customerTier, tierBadgeKiosk, tierName } from './tier'
+import { birthdayPercentForTierName, tierBadgeKiosk, tierName } from './tier'
 
 // One eligible promotion — a redeemable loyalty program. All are redeemed via
 // redeem_points by programId; the trigger decides what changes on the customer.
@@ -76,8 +76,11 @@ export function useEligiblePromotions(customer: Customer | null): Promotion[] {
         // Birthday discount is tier-based (New/Regular/VIP), not the program's
         // fixed reward_value — so the kiosk shows the exact % this customer gets.
         // The tier itself is shown on the customer card, not repeated here.
-        const pct = birthdayPercentForTier(customer.lifetimePoints, tierPercents)
-        const tier = customerTier(customer.lifetimePoints)
+        // Use the customer's STORED tier — which decays with inactivity — so a
+        // lapsed VIP who returns only for their birthday gets the discount their
+        // current standing warrants, not the full VIP percent.
+        const tier = customer.tier
+        const pct = birthdayPercentForTierName(tier, tierPercents)
         promotions.push({
           id: `program-${p.id}`,
           programId: p.id,

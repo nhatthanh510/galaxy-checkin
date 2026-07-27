@@ -6,7 +6,7 @@ import { ServiceRow } from '../../components/ServiceRow'
 import { ServiceListSkeleton } from '../../components/ServiceListSkeleton'
 import { BackButton } from '../../components/BackButton'
 import { useServices, useServiceGroups } from '../../lib/queries'
-import { customerTier, tierBadgeKiosk } from '../../lib/tier'
+import { tierBadgeKiosk } from '../../lib/tier'
 import type { Service, ServiceGroup } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
 import { useConfirmUnload } from './useConfirmUnload'
@@ -53,7 +53,7 @@ export function ServiceSelection() {
                 Welcome back, {customer.name}! 👋
               </p>
               {(() => {
-                const badge = tierBadgeKiosk(customerTier(customer.lifetimePoints))
+                const badge = tierBadgeKiosk(customer.tier)
                 return (
                   <span
                     className={`rounded-full px-4 py-1.5 text-lg font-bold ${badge.className}`}

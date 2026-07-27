@@ -1,8 +1,13 @@
-// Customer loyalty tier, derived from LIFETIME points (total ever earned, which
-// doesn't drop on redeem). Thresholds:
+// Customer loyalty tier. A tier is EARNED from lifetime points (total ever
+// earned, which doesn't drop on redeem) via these thresholds:
 //   0..4     -> New
 //   5..19    -> Regular
 //   >= 20    -> VIP
+// ...but it is now MAINTAINED by activity: the effective tier is PERSISTED on
+// customer.tier and decays one level per review when a customer's trailing-
+// window visit count falls below the configured threshold (migration 0017).
+// So `customerTier(lifetimePoints)` is only the earned ceiling / initial value;
+// read the stored `customer.tier` for the value to display or reward on.
 export type CustomerTier = 'new' | 'regular' | 'vip'
 
 export function customerTier(lifetimePoints: number): CustomerTier {
@@ -14,6 +19,14 @@ export function customerTier(lifetimePoints: number): CustomerTier {
 // Plain human label for a tier ("New" / "Regular" / "VIP"), for inline text.
 export function tierName(tier: CustomerTier): string {
   return tier === 'vip' ? 'VIP' : tier === 'regular' ? 'Regular' : 'New'
+}
+
+// Numeric order for a tier (New=0, Regular=1, VIP=2), the TS twin of the SQL
+// tier_rank (migration 0017). Lets callers compare a stored tier against the
+// earned tier — a stored tier BELOW the earned one means the customer has been
+// downgraded for inactivity.
+export function tierRank(tier: CustomerTier): number {
+  return tier === 'vip' ? 2 : tier === 'regular' ? 1 : 0
 }
 
 // Label + tailwind classes for a tier badge (light admin theme).
@@ -62,6 +75,17 @@ export function birthdayPercentForTier(
   percents: BirthdayTierPercents,
 ): number {
   return percents[customerTier(lifetimePoints)]
+}
+
+// The birthday percent for an already-known tier. Prefer this over
+// birthdayPercentForTier wherever a customer's STORED tier is available (the
+// tier now decays with inactivity and can differ from what lifetime points
+// would derive), so the percent shown matches the customer's real standing.
+export function birthdayPercentForTierName(
+  tier: CustomerTier,
+  percents: BirthdayTierPercents,
+): number {
+  return percents[tier]
 }
 
 // Admin-facing summary of the tier percents, stored as the birthday program's

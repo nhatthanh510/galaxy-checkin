@@ -15,6 +15,7 @@ import type {
   SmsTemplate,
   SmsTemplateRow,
 } from '../../types'
+import { customerTier } from '../tier'
 
 export function mapCustomer(row: CustomerRow): Customer {
   return {
@@ -24,6 +25,10 @@ export function mapCustomer(row: CustomerRow): Customer {
     visitCount: row.visit_count,
     pointsBalance: row.points_balance,
     lifetimePoints: row.lifetime_points ?? 0,
+    // Prefer the stored, activity-maintained tier; fall back to the earned tier
+    // for rows selected before the column existed / without it selected.
+    tier: row.tier ?? customerTier(row.lifetime_points ?? 0),
+    tierLocked: row.tier_locked ?? false,
     lastVisitAt: row.last_visit_at ?? null,
     lastVisitBranchName: row.last_visit_branch?.name ?? null,
     birthday: row.birthday ?? null,

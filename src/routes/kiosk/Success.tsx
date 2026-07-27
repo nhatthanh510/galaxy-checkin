@@ -8,7 +8,7 @@ import {
   AlreadyCheckedInTodayError,
 } from '../../lib/queries'
 import { useEligiblePromotions } from '../../lib/useEligiblePromotions'
-import { customerTier, tierBadgeKiosk } from '../../lib/tier'
+import { tierBadgeKiosk } from '../../lib/tier'
 import type { Customer } from '../../types'
 import { useKioskFlow } from './useKioskFlow'
 import { useConfirmUnload } from './useConfirmUnload'
@@ -77,6 +77,9 @@ export function Success() {
               pointsBalance: result.customer.pointsBalance,
               lifetimePoints: result.customer.lifetimePoints,
               visitCount: result.customer.visitCount,
+              // Recomputed at check-in — overlay so the reward/badge use the
+              // fresh tier, not the pre-check-in one.
+              tier: result.customer.tier,
             }
           : result.customer
         setCustomer(merged)
@@ -203,7 +206,7 @@ export function Success() {
               {customer && (
                 <div className="mt-3 flex justify-center">
                   {(() => {
-                    const badge = tierBadgeKiosk(customerTier(customer.lifetimePoints))
+                    const badge = tierBadgeKiosk(customer.tier)
                     return (
                       <span className={`rounded-full px-4 py-1.5 text-lg font-bold ${badge.className}`}>
                         {badge.label} member

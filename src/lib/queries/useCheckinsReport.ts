@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import type { CheckinStatus } from '../../types'
+import type { CheckinStatus, CustomerTier } from '../../types'
 import { getSupabase } from '../supabase'
 import { localDayRangeISO } from '../day'
+import { customerTier } from '../tier'
 
 // The [start, end) UTC instants spanning an inclusive local-date range: from the
 // start of `from`'s local day to the start of the day AFTER `to`. Handles the two
@@ -21,8 +22,9 @@ export interface CheckinReportRow {
   customerId: string | null
   customerName: string
   customerPhone: string
-  // Lifetime points, so the row can show the customer's tier badge (New/Regular/VIP).
-  customerLifetimePoints: number
+  // The customer's persisted, activity-maintained tier, so the row can show the
+  // tier badge (New/Regular/VIP) matching what the customer actually holds.
+  customerTier: CustomerTier
   branchId: string | null
   branchName: string | null
 }
@@ -34,7 +36,7 @@ interface RawRow {
   created_at: string
   status: CheckinStatus
   customer_id: string | null
-  customer: { name: string; phone: string; lifetime_points: number } | null
+  customer: { name: string; phone: string; lifetime_points: number; tier: CustomerTier | null } | null
   branch: { id: string; name: string } | null
 }
 
@@ -57,7 +59,7 @@ export function useCheckinsReport(from: Date | null, to: Date | null) {
         let q = getSupabase()
           .from('checkin')
           .select(
-            'id, created_at, status, customer_id, customer:customer_id(name, phone, lifetime_points), branch:branch_id(id, name)',
+            'id, created_at, status, customer_id, customer:customer_id(name, phone, lifetime_points, tier), branch:branch_id(id, name)',
           )
         // Range mode: bound by [start, end). All mode: no date filter.
         if (range) q = q.gte('created_at', range.start).lt('created_at', range.end)
@@ -74,7 +76,8 @@ export function useCheckinsReport(from: Date | null, to: Date | null) {
             customerId: r.customer_id,
             customerName: r.customer?.name ?? 'Unknown',
             customerPhone: r.customer?.phone ?? '',
-            customerLifetimePoints: r.customer?.lifetime_points ?? 0,
+            // Fall back to the earned tier if the column is somehow absent.
+            customerTier: r.customer?.tier ?? customerTier(r.customer?.lifetime_points ?? 0),
             branchId: r.branch?.id ?? null,
             branchName: r.branch?.name ?? null,
           })
