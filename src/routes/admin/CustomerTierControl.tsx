@@ -25,8 +25,14 @@ export function CustomerTierControl({
   settings: AppSettings | undefined
 }) {
   const setTier = useSetTier()
-  const [tier, setTierValue] = useState<CustomerTier>(customer.tier)
-  const [locked, setLocked] = useState(customer.tierLocked)
+  // Draft edits: null means "no pending change, show the customer's current
+  // value". This keeps the dropdown in sync with customer.tier as it updates
+  // (e.g. after a check-in recompute or a save) instead of showing a stale
+  // once-seeded value — without a setState-in-effect.
+  const [tierDraft, setTierDraft] = useState<CustomerTier | null>(null)
+  const [lockedDraft, setLockedDraft] = useState<boolean | null>(null)
+  const tier = tierDraft ?? customer.tier
+  const locked = lockedDraft ?? customer.tierLocked
 
   const dirty = tier !== customer.tier || locked !== customer.tierLocked
 
@@ -51,7 +57,11 @@ export function CustomerTierControl({
 
   const onSave = () => {
     if (!dirty) return
-    setTier.mutate({ id: customer.id, tier, locked })
+    setTier.mutate(
+      { id: customer.id, tier, locked },
+      // Clear the drafts so the control shows the freshly-saved current values.
+      { onSuccess: () => { setTierDraft(null); setLockedDraft(null) } },
+    )
   }
 
   return (
@@ -66,18 +76,19 @@ export function CustomerTierControl({
         <p className="mt-1 text-sm text-slate-500">
           {visits} visit{visits === 1 ? '' : 's'} in the last {windowMonths} month
           {windowMonths === 1 ? '' : 's'}.
-          {needed > 0 && (
-            <>
-              {' '}
-              Needs {needed} to keep {tierName(customer.tier)}.
-            </>
-          )}
-          {atRisk && (
-            <span className="font-medium text-amber-700">
-              {' '}
-              ⚠ Below threshold — will drop a level at the next review.
-            </span>
-          )}
+          {needed > 0 &&
+            (atRisk ? (
+              <span className="font-medium text-amber-700">
+                {' '}
+                ⚠ Below the {needed} needed to keep {tierName(customer.tier)} — will drop a level
+                at the next review.
+              </span>
+            ) : (
+              <>
+                {' '}
+                Keeps {tierName(customer.tier)} ({needed} needed).
+              </>
+            ))}
         </p>
       )}
 
@@ -87,7 +98,7 @@ export function CustomerTierControl({
           <Select<CustomerTier>
             value={tier}
             options={TIER_OPTIONS}
-            onChange={setTierValue}
+            onChange={setTierDraft}
             className="mt-1 w-40"
             aria-label="Customer tier"
           />
@@ -96,7 +107,7 @@ export function CustomerTierControl({
           <input
             type="checkbox"
             checked={locked}
-            onChange={(e) => setLocked(e.target.checked)}
+            onChange={(e) => setLockedDraft(e.target.checked)}
             className="h-4 w-4"
           />
           Lock tier (exempt from automatic changes)
