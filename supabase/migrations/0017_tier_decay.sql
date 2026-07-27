@@ -511,7 +511,9 @@ begin
   from counts
   where counts.current_tier
         <> public.next_tier(counts.current_tier, counts.n::integer, counts.lifetime, v_vip_min, v_reg_min)
-  order by counts.name;
+  -- Default sort by latest visited first (most recent last-visit at the top,
+  -- never-visited last), matching the Customers list; name breaks ties.
+  order by counts.last_visit_at desc nulls last, counts.name;
 end;
 $$;
 

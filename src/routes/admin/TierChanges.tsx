@@ -7,6 +7,7 @@ import {
   useSettings,
 } from '../../lib/queries'
 import { tierBadge, tierRank } from '../../lib/tier'
+import { formatPhone } from '../../lib/phone'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { TextInput } from '../../components/ui/TextInput'
@@ -289,7 +290,10 @@ function ChangeRow({ change }: { change: TierChange }) {
   return (
     <tr className="border-b border-slate-100 last:border-0">
       <td className="whitespace-nowrap px-3 py-3 align-top text-slate-600">
-        {new Date(change.createdAt).toLocaleString()}
+        {new Date(change.createdAt).toLocaleString(undefined, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        })}
       </td>
       <td className="px-3 py-3 align-top">
         <Link
@@ -298,6 +302,9 @@ function ChangeRow({ change }: { change: TierChange }) {
         >
           {change.customerName}
         </Link>
+        {change.customerPhone && (
+          <div className="text-xs text-slate-400">{formatPhone(change.customerPhone)}</div>
+        )}
       </td>
       <td className="whitespace-nowrap px-3 py-3 align-top">
         <span className="inline-flex items-center gap-1.5">
@@ -360,15 +367,20 @@ function PreviewPanel({
   applying: boolean
   applyError: string | null
 }) {
-  // Filter: show only rows with visits-in-window <= this (blank = all). Set to 0
-  // to isolate customers with no visit in the window (definite lapses).
+  // Filters: max visits-in-window (blank = all; 0 isolates no-visit lapses) and a
+  // name/phone search.
   const [maxVisits, setMaxVisits] = useState('')
+  const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [confirming, setConfirming] = useState(false)
 
   const cap = maxVisits.trim() === '' ? null : Math.max(0, Math.floor(Number(maxVisits) || 0))
-  const filtered =
-    cap == null ? rows : rows.filter((r) => (r.visitsInWindow ?? 0) <= cap)
+  const q = search.trim().toLowerCase()
+  const filtered = rows.filter(
+    (r) =>
+      (cap == null || (r.visitsInWindow ?? 0) <= cap) &&
+      (q === '' || r.name.toLowerCase().includes(q) || r.phone.includes(q)),
+  )
 
   // Selection acts on the FILTERED set (across pages); Apply uses that.
   const filteredSelectedIds = filtered.filter((r) => selected.has(r.customerId)).map((r) => r.customerId)
@@ -383,6 +395,10 @@ function PreviewPanel({
 
   const onFilterChange = (v: string) => {
     setMaxVisits(v)
+    setPage(0)
+  }
+  const onSearchChange = (v: string) => {
+    setSearch(v)
     setPage(0)
   }
 
@@ -407,7 +423,16 @@ function PreviewPanel({
         <h2 className="text-lg font-semibold">
           Preview — {rows.length} customer{rows.length === 1 ? '' : 's'} would change
         </h2>
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+          <div className="w-full sm:w-52">
+            <TextInput
+              type="search"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search name or phone"
+              className="py-1.5"
+            />
+          </div>
           <label htmlFor="pv-max-visits" className="whitespace-nowrap">
             Max visits
           </label>
@@ -476,6 +501,9 @@ function PreviewPanel({
                     >
                       {r.name}
                     </Link>
+                    {r.phone && (
+                      <div className="text-xs text-slate-400">{formatPhone(r.phone)}</div>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3 align-top">
                     <span className="inline-flex items-center gap-1.5">
